@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { VerificationStatus } from '../../../../shared/domain/enums/verification-status.enum.js';
+import { InvalidVerificationTransitionError } from '../../../../shared/domain/errors/invalid-verification-transition.error.js';
 
 export interface PropertyOwnerProps {
   userId: string;
@@ -54,12 +55,38 @@ export class PropertyOwner {
   }
 
   verify(): void {
-    this.props.verificationStatus = VerificationStatus.VERIFIED;
-    this.touch();
+    this.changeVerification(
+      VerificationStatus.PENDING,
+      VerificationStatus.VERIFIED,
+    );
   }
 
   reject(): void {
-    this.props.verificationStatus = VerificationStatus.REJECTED;
+    this.changeVerification(
+      VerificationStatus.PENDING,
+      VerificationStatus.REJECTED,
+    );
+  }
+
+  // Após uma rejeição, o dono envia novo documento e volta para a fila.
+  resubmitVerification(): void {
+    this.changeVerification(
+      VerificationStatus.REJECTED,
+      VerificationStatus.PENDING,
+    );
+  }
+
+  private changeVerification(
+    expected: VerificationStatus,
+    next: VerificationStatus,
+  ): void {
+    if (this.props.verificationStatus !== expected) {
+      throw new InvalidVerificationTransitionError(
+        this.props.verificationStatus,
+        next,
+      );
+    }
+    this.props.verificationStatus = next;
     this.touch();
   }
 

@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import type { BudgetRange } from '../value-objects/budget-range.vo.js';
+import type { PreferenceLevel } from '../value-objects/preference-level.vo.js';
+import type { TimeSlot } from '../value-objects/time-slot.vo.js';
 
 export type Weekday =
   | 'MONDAY'
@@ -9,23 +12,16 @@ export type Weekday =
   | 'SATURDAY'
   | 'SUNDAY';
 
-// Horários no formato "HH:mm".
-export interface TimeSlot {
-  start: string;
-  end: string;
-}
-
 export type WeeklySchedule = Partial<Record<Weekday, TimeSlot[]>>;
 
 export interface StudentProfileProps {
   studentId: string;
   bio: string;
   income: number | null;
-  minBudget: number;
-  maxBudget: number;
+  budget: BudgetRange;
   isSmoker: boolean;
-  noisePreference: number;
-  visitPreference: number;
+  noisePreference: PreferenceLevel;
+  visitPreference: PreferenceLevel;
   schedule: WeeklySchedule;
   updatedAt: Date;
 }
@@ -73,23 +69,19 @@ export class StudentProfile {
     return this.props.income;
   }
 
-  get minBudget(): number {
-    return this.props.minBudget;
-  }
-
-  get maxBudget(): number {
-    return this.props.maxBudget;
+  get budget(): BudgetRange {
+    return this.props.budget;
   }
 
   get isSmoker(): boolean {
     return this.props.isSmoker;
   }
 
-  get noisePreference(): number {
+  get noisePreference(): PreferenceLevel {
     return this.props.noisePreference;
   }
 
-  get visitPreference(): number {
+  get visitPreference(): PreferenceLevel {
     return this.props.visitPreference;
   }
 
@@ -104,8 +96,7 @@ export class StudentProfile {
   update(input: StudentProfileInput): void {
     this.props.bio = input.bio;
     this.props.income = input.income;
-    this.props.minBudget = input.minBudget;
-    this.props.maxBudget = input.maxBudget;
+    this.props.budget = input.budget;
     this.props.isSmoker = input.isSmoker;
     this.props.noisePreference = input.noisePreference;
     this.props.visitPreference = input.visitPreference;

@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { VerificationStatus } from '../../../../shared/domain/enums/verification-status.enum.js';
+import { InvalidVerificationTransitionError } from '../../../../shared/domain/errors/invalid-verification-transition.error.js';
+import type { AcademicPeriod } from '../value-objects/academic-period.vo.js';
+import type { EnrollmentNumber } from '../value-objects/enrollment-number.vo.js';
 import {
   StudentProfile,
   type StudentProfileInput,
@@ -7,9 +10,9 @@ import {
 
 export interface StudentProps {
   userId: string;
-  enrollmentNumber: string;
+  enrollmentNumber: EnrollmentNumber;
   course: string;
-  period: number;
+  period: AcademicPeriod;
   expectedGraduation: Date;
   verificationStatus: VerificationStatus;
   profile: StudentProfile | null;
@@ -19,15 +22,15 @@ export interface StudentProps {
 
 export interface CreateStudentProps {
   userId: string;
-  enrollmentNumber: string;
+  enrollmentNumber: EnrollmentNumber;
   course: string;
-  period: number;
+  period: AcademicPeriod;
   expectedGraduation: Date;
 }
 
 export interface AcademicInfo {
   course: string;
-  period: number;
+  period: AcademicPeriod;
   expectedGraduation: Date;
 }
 
@@ -66,7 +69,7 @@ export class Student {
     return this.props.userId;
   }
 
-  get enrollmentNumber(): string {
+  get enrollmentNumber(): EnrollmentNumber {
     return this.props.enrollmentNumber;
   }
 
@@ -74,7 +77,7 @@ export class Student {
     return this.props.course;
   }
 
-  get period(): number {
+  get period(): AcademicPeriod {
     return this.props.period;
   }
 
@@ -119,12 +122,38 @@ export class Student {
   }
 
   verify(): void {
-    this.props.verificationStatus = VerificationStatus.VERIFIED;
-    this.touch();
+    this.changeVerification(
+      VerificationStatus.PENDING,
+      VerificationStatus.VERIFIED,
+    );
   }
 
   reject(): void {
-    this.props.verificationStatus = VerificationStatus.REJECTED;
+    this.changeVerification(
+      VerificationStatus.PENDING,
+      VerificationStatus.REJECTED,
+    );
+  }
+
+  // Após uma rejeição, o estudante envia novo documento e volta para a fila.
+  resubmitVerification(): void {
+    this.changeVerification(
+      VerificationStatus.REJECTED,
+      VerificationStatus.PENDING,
+    );
+  }
+
+  private changeVerification(
+    expected: VerificationStatus,
+    next: VerificationStatus,
+  ): void {
+    if (this.props.verificationStatus !== expected) {
+      throw new InvalidVerificationTransitionError(
+        this.props.verificationStatus,
+        next,
+      );
+    }
+    this.props.verificationStatus = next;
     this.touch();
   }
 

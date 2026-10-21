@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { AccountStatus } from '../enums/account-status.enum.js';
+import { InvalidAccountStatusTransitionError } from '../errors/invalid-account-status-transition.error.js';
+import type { Cpf } from '../value-objects/cpf.vo.js';
+import type { Email } from '../value-objects/email.vo.js';
 
 export interface UserProps {
   name: string;
-  email: string;
-  cpf: string;
+  email: Email;
+  cpf: Cpf;
   passwordHash: string;
   phone: string | null;
   photoUrl: string | null;
@@ -16,8 +19,8 @@ export interface UserProps {
 
 export interface CreateUserProps {
   name: string;
-  email: string;
-  cpf: string;
+  email: Email;
+  cpf: Cpf;
   passwordHash: string;
   phone?: string | null;
   photoUrl?: string | null;
@@ -60,11 +63,11 @@ export class User {
     return this.props.name;
   }
 
-  get email(): string {
+  get email(): Email {
     return this.props.email;
   }
 
-  get cpf(): string {
+  get cpf(): Cpf {
     return this.props.cpf;
   }
 
@@ -97,22 +100,35 @@ export class User {
   }
 
   verifyEmail(): void {
+    if (this.props.emailVerified) return;
     this.props.emailVerified = true;
     this.touch();
   }
 
   suspend(): void {
-    this.props.status = AccountStatus.SUSPENDED;
-    this.touch();
+    this.changeStatus([AccountStatus.ACTIVE], AccountStatus.SUSPENDED);
   }
 
   reactivate(): void {
-    this.props.status = AccountStatus.ACTIVE;
-    this.touch();
+    this.changeStatus([AccountStatus.SUSPENDED], AccountStatus.ACTIVE);
   }
 
+  // Desativação é definitiva: não há transição de volta para ACTIVE.
   deactivate(): void {
-    this.props.status = AccountStatus.DEACTIVATED;
+    this.changeStatus(
+      [AccountStatus.ACTIVE, AccountStatus.SUSPENDED],
+      AccountStatus.DEACTIVATED,
+    );
+  }
+
+  private changeStatus(
+    allowedFrom: AccountStatus[],
+    next: AccountStatus,
+  ): void {
+    if (!allowedFrom.includes(this.props.status)) {
+      throw new InvalidAccountStatusTransitionError(this.props.status, next);
+    }
+    this.props.status = next;
     this.touch();
   }
 
