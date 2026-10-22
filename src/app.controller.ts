@@ -1,6 +1,4 @@
-import { Controller, Get, Param, Req, Post } from '@nestjs/common';
-import type { Request } from 'express';
-
+import { Controller, Get, Post } from '@nestjs/common';
 
 @Controller('user')
 export class UserController {
@@ -10,7 +8,7 @@ export class UserController {
   }
 
   @Get()
-  findAll(@Req() request: Request): string {
+  findAll(): string {
     return 'all users';
   }
 }

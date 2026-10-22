@@ -1,16 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import { AccountStatus } from '../enums/account-status.enum.js';
 import { InvalidAccountStatusTransitionError } from '../errors/invalid-account-status-transition.error.js';
+import { InvalidNameError } from '../errors/invalid-name.error.js';
 import type { Cpf } from '../value-objects/cpf.vo.js';
 import type { Email } from '../value-objects/email.vo.js';
+import type { Phone } from '../value-objects/phone.vo.js';
+import type { PhotoUrl } from '../value-objects/photo-url.vo.js';
+
+const NAME_MAX_LENGTH = 100;
 
 export interface UserProps {
   name: string;
   email: Email;
   cpf: Cpf;
   passwordHash: string;
-  phone: string | null;
-  photoUrl: string | null;
+  phone: Phone | null;
+  photoUrl: PhotoUrl | null;
   emailVerified: boolean;
   status: AccountStatus;
   createdAt: Date;
@@ -22,22 +27,28 @@ export interface CreateUserProps {
   email: Email;
   cpf: Cpf;
   passwordHash: string;
-  phone?: string | null;
-  photoUrl?: string | null;
+  phone?: Phone | null;
+  photoUrl?: PhotoUrl | null;
 }
 
 export class User {
-  private constructor(
-    private readonly _id: string,
-    private readonly props: UserProps,
-  ) {}
+  // Campos privados de verdade (#), e não `private` do TypeScript: assim
+  // JSON.stringify e logs não expõem passwordHash e CPF se a entidade for
+  // serializada por engano. A resposta HTTP deve passar por um presenter.
+  readonly #id: string;
+  readonly #props: UserProps;
+
+  private constructor(id: string, props: UserProps) {
+    this.#id = id;
+    this.#props = props;
+  }
 
   // Novo usuário: gera id e aplica os valores iniciais.
   static create(input: CreateUserProps): User {
     const now = new Date();
 
     return new User(randomUUID(), {
-      name: input.name,
+      name: User.validateName(input.name),
       email: input.email,
       cpf: input.cpf,
       passwordHash: input.passwordHash,
@@ -56,52 +67,52 @@ export class User {
   }
 
   get id(): string {
-    return this._id;
+    return this.#id;
   }
 
   get name(): string {
-    return this.props.name;
+    return this.#props.name;
   }
 
   get email(): Email {
-    return this.props.email;
+    return this.#props.email;
   }
 
   get cpf(): Cpf {
-    return this.props.cpf;
+    return this.#props.cpf;
   }
 
   get passwordHash(): string {
-    return this.props.passwordHash;
+    return this.#props.passwordHash;
   }
 
-  get phone(): string | null {
-    return this.props.phone;
+  get phone(): Phone | null {
+    return this.#props.phone;
   }
 
-  get photoUrl(): string | null {
-    return this.props.photoUrl;
+  get photoUrl(): PhotoUrl | null {
+    return this.#props.photoUrl;
   }
 
   get emailVerified(): boolean {
-    return this.props.emailVerified;
+    return this.#props.emailVerified;
   }
 
   get status(): AccountStatus {
-    return this.props.status;
+    return this.#props.status;
   }
 
   get createdAt(): Date {
-    return this.props.createdAt;
+    return this.#props.createdAt;
   }
 
   get updatedAt(): Date {
-    return this.props.updatedAt;
+    return this.#props.updatedAt;
   }
 
   verifyEmail(): void {
-    if (this.props.emailVerified) return;
-    this.props.emailVerified = true;
+    if (this.#props.emailVerified) return;
+    this.#props.emailVerified = true;
     this.touch();
   }
 
@@ -121,18 +132,26 @@ export class User {
     );
   }
 
+  private static validateName(raw: string): string {
+    const name = raw.trim();
+    if (name.length === 0 || name.length > NAME_MAX_LENGTH) {
+      throw new InvalidNameError(NAME_MAX_LENGTH);
+    }
+    return name;
+  }
+
   private changeStatus(
     allowedFrom: AccountStatus[],
     next: AccountStatus,
   ): void {
-    if (!allowedFrom.includes(this.props.status)) {
-      throw new InvalidAccountStatusTransitionError(this.props.status, next);
+    if (!allowedFrom.includes(this.#props.status)) {
+      throw new InvalidAccountStatusTransitionError(this.#props.status, next);
     }
-    this.props.status = next;
+    this.#props.status = next;
     this.touch();
   }
 
   private touch(): void {
-    this.props.updatedAt = new Date();
+    this.#props.updatedAt = new Date();
   }
 }

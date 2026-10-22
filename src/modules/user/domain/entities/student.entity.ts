@@ -1,12 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { VerificationStatus } from '../../../../shared/domain/enums/verification-status.enum.js';
 import { InvalidVerificationTransitionError } from '../../../../shared/domain/errors/invalid-verification-transition.error.js';
+import { InvalidCourseError } from '../errors/invalid-course.error.js';
+import { InvalidExpectedGraduationError } from '../errors/invalid-expected-graduation.error.js';
 import type { AcademicPeriod } from '../value-objects/academic-period.vo.js';
 import type { EnrollmentNumber } from '../value-objects/enrollment-number.vo.js';
 import {
   StudentProfile,
   type StudentProfileInput,
 } from './student-profile.entity.js';
+
+const COURSE_MAX_LENGTH = 100;
 
 export interface StudentProps {
   userId: string;
@@ -36,10 +40,14 @@ export interface AcademicInfo {
 
 // Student é a raiz do agregado: o StudentProfile só é criado/alterado por aqui.
 export class Student {
-  private constructor(
-    private readonly _id: string,
-    private readonly props: StudentProps,
-  ) {}
+  // Campos privados de verdade (#): serializar a entidade não expõe os dados.
+  readonly #id: string;
+  readonly #props: StudentProps;
+
+  private constructor(id: string, props: StudentProps) {
+    this.#id = id;
+    this.#props = props;
+  }
 
   static create(input: CreateStudentProps): Student {
     const now = new Date();
@@ -47,9 +55,7 @@ export class Student {
     return new Student(randomUUID(), {
       userId: input.userId,
       enrollmentNumber: input.enrollmentNumber,
-      course: input.course,
-      period: input.period,
-      expectedGraduation: input.expectedGraduation,
+      ...Student.validateAcademicInfo(input),
       verificationStatus: VerificationStatus.PENDING,
       profile: null,
       createdAt: now,
@@ -62,62 +68,58 @@ export class Student {
   }
 
   get id(): string {
-    return this._id;
+    return this.#id;
   }
 
   get userId(): string {
-    return this.props.userId;
+    return this.#props.userId;
   }
 
   get enrollmentNumber(): EnrollmentNumber {
-    return this.props.enrollmentNumber;
+    return this.#props.enrollmentNumber;
   }
 
   get course(): string {
-    return this.props.course;
+    return this.#props.course;
   }
 
   get period(): AcademicPeriod {
-    return this.props.period;
+    return this.#props.period;
   }
 
   get expectedGraduation(): Date {
-    return this.props.expectedGraduation;
+    return this.#props.expectedGraduation;
   }
 
   get verificationStatus(): VerificationStatus {
-    return this.props.verificationStatus;
+    return this.#props.verificationStatus;
   }
 
   get profile(): StudentProfile | null {
-    return this.props.profile;
+    return this.#props.profile;
   }
 
   get createdAt(): Date {
-    return this.props.createdAt;
+    return this.#props.createdAt;
   }
 
   get updatedAt(): Date {
-    return this.props.updatedAt;
+    return this.#props.updatedAt;
   }
 
   updateAcademicInfo(input: AcademicInfo): void {
-    this.props.course = input.course;
-    this.props.period = input.period;
-    this.props.expectedGraduation = input.expectedGraduation;
+    const info = Student.validateAcademicInfo(input);
+    this.#props.course = info.course;
+    this.#props.period = info.period;
+    this.#props.expectedGraduation = info.expectedGraduation;
     this.touch();
   }
 
-  // Cria o perfil na primeira vez; nas seguintes, atualiza o existente.
+  // Cria o perfil na primeira vez; nas seguintes, substitui pelo atualizado.
   defineProfile(input: StudentProfileInput): void {
-    if (this.props.profile) {
-      this.props.profile.update(input);
-    } else {
-      this.props.profile = StudentProfile.create({
-        studentId: this._id,
-        ...input,
-      });
-    }
+    this.#props.profile = this.#props.profile
+      ? this.#props.profile.withChanges(input)
+      : StudentProfile.create(this.#id, input);
     this.touch();
   }
 
@@ -143,21 +145,42 @@ export class Student {
     );
   }
 
+  private static validateAcademicInfo(input: AcademicInfo): AcademicInfo {
+    const course = input.course.trim();
+    if (course.length === 0 || course.length > COURSE_MAX_LENGTH) {
+      throw new InvalidCourseError(COURSE_MAX_LENGTH);
+    }
+
+    if (
+      !(input.expectedGraduation instanceof Date) ||
+      Number.isNaN(input.expectedGraduation.getTime())
+    ) {
+      throw new InvalidExpectedGraduationError();
+    }
+
+    return {
+      course,
+      period: input.period,
+      // Cópia, para que quem passou a data não consiga alterá-la depois.
+      expectedGraduation: new Date(input.expectedGraduation.getTime()),
+    };
+  }
+
   private changeVerification(
     expected: VerificationStatus,
     next: VerificationStatus,
   ): void {
-    if (this.props.verificationStatus !== expected) {
+    if (this.#props.verificationStatus !== expected) {
       throw new InvalidVerificationTransitionError(
-        this.props.verificationStatus,
+        this.#props.verificationStatus,
         next,
       );
     }
-    this.props.verificationStatus = next;
+    this.#props.verificationStatus = next;
     this.touch();
   }
 
   private touch(): void {
-    this.props.updatedAt = new Date();
+    this.#props.updatedAt = new Date();
   }
 }

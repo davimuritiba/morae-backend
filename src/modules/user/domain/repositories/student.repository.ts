@@ -8,5 +8,7 @@ export abstract class StudentRepository {
     enrollmentNumber: EnrollmentNumber,
   ): Promise<boolean>;
   // Persiste o agregado inteiro: Student + StudentProfile.
+  // Como em UserRepository, a matrícula deve ser única no banco (constraint
+  // UNIQUE), com a violação convertida em EnrollmentNumberAlreadyInUseError.
   abstract save(student: Student): Promise<void>;
 }

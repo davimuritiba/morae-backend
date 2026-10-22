@@ -14,10 +14,13 @@ export interface CreatePropertyOwnerProps {
 }
 
 export class PropertyOwner {
-  private constructor(
-    private readonly _id: string,
-    private readonly props: PropertyOwnerProps,
-  ) {}
+  readonly #id: string;
+  readonly #props: PropertyOwnerProps;
+
+  private constructor(id: string, props: PropertyOwnerProps) {
+    this.#id = id;
+    this.#props = props;
+  }
 
   static create(input: CreatePropertyOwnerProps): PropertyOwner {
     const now = new Date();
@@ -35,23 +38,23 @@ export class PropertyOwner {
   }
 
   get id(): string {
-    return this._id;
+    return this.#id;
   }
 
   get userId(): string {
-    return this.props.userId;
+    return this.#props.userId;
   }
 
   get verificationStatus(): VerificationStatus {
-    return this.props.verificationStatus;
+    return this.#props.verificationStatus;
   }
 
   get createdAt(): Date {
-    return this.props.createdAt;
+    return this.#props.createdAt;
   }
 
   get updatedAt(): Date {
-    return this.props.updatedAt;
+    return this.#props.updatedAt;
   }
 
   verify(): void {
@@ -80,17 +83,17 @@ export class PropertyOwner {
     expected: VerificationStatus,
     next: VerificationStatus,
   ): void {
-    if (this.props.verificationStatus !== expected) {
+    if (this.#props.verificationStatus !== expected) {
       throw new InvalidVerificationTransitionError(
-        this.props.verificationStatus,
+        this.#props.verificationStatus,
         next,
       );
     }
-    this.props.verificationStatus = next;
+    this.#props.verificationStatus = next;
     this.touch();
   }
 
   private touch(): void {
-    this.props.updatedAt = new Date();
+    this.#props.updatedAt = new Date();
   }
 }
