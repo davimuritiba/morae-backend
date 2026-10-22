@@ -1,7 +1,10 @@
-import { InvalidNameError } from '../errors/invalid-name.error.js';
-import { Cpf } from '../value-objects/cpf.vo.js';
-import { Email } from '../value-objects/email.vo.js';
-import { User, type CreateUserProps } from './user.entity.js';
+import { InvalidNameError } from '../../../domain/errors/invalid-name.error.js';
+import { Cpf } from '../../../domain/value-objects/cpf.vo.js';
+import { Email } from '../../../domain/value-objects/email.vo.js';
+import {
+  User,
+  type CreateUserProps,
+} from '../../../domain/entities/user.entity.js';
 
 function makeInput(overrides: Partial<CreateUserProps> = {}): CreateUserProps {
   return {

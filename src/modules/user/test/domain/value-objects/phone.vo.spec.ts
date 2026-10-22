@@ -1,5 +1,5 @@
-import { InvalidPhoneError } from '../errors/invalid-phone.error.js';
-import { Phone } from './phone.vo.js';
+import { InvalidPhoneError } from '../../../domain/errors/invalid-phone.error.js';
+import { Phone } from '../../../domain/value-objects/phone.vo.js';
 
 describe('Phone', () => {
   it.each([

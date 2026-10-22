@@ -1,0 +1,126 @@
+// Schema do banco do Moraê. Learn more: https://pris.ly/d/prisma-schema
+//
+// Convenções:
+// - Ids são UUID gerados pelas entidades de domínio, por isso sem @default.
+// - Nomes em camelCase no código e snake_case no banco (@map / @@map).
+// - updatedAt também vem da entidade (método touch()), por isso sem @updatedAt.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/shared/infra/database/generated/prisma"
+  // O projeto é ESM com moduleResolution "nodenext", que exige extensão .js
+  // nos imports relativos do client gerado.
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum Permission {
+  VERIFY_DOCUMENTS
+  MODERATE_LISTINGS
+  MANAGE_USERS
+  VIEW_REPORTS
+}
+
+// ─── Módulo user ────────────────────────────────────────────────────────────
+
+model User {
+  id            String        @id @db.Uuid
+  name          String        @db.VarChar(100)
+  email         String        @unique @db.VarChar(254)
+  // Só os 11 dígitos, como o VO Cpf guarda.
+  cpf           String        @unique @db.Char(11)
+  passwordHash  String        @map("password_hash")
+  // DDD + número, sem código do país (VO Phone).
+  phone         String?       @db.VarChar(11)
+  photoUrl      String?       @map("photo_url") @db.VarChar(2048)
+  emailVerified Boolean       @default(false) @map("email_verified")
+  status        AccountStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime      @map("updated_at") @db.Timestamptz(3)
+
+  student       Student?
+  propertyOwner PropertyOwner?
+  administrator Administrator?
+
+  @@map("users")
+}
+
+model Student {
+  id                 String             @id @db.Uuid
+  userId             String             @unique @map("user_id") @db.Uuid
+  enrollmentNumber   String             @unique @map("enrollment_number") @db.VarChar(15)
+  course             String             @db.VarChar(100)
+  period             Int                @db.SmallInt
+  expectedGraduation DateTime           @map("expected_graduation") @db.Date
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @map("updated_at") @db.Timestamptz(3)
+
+  user    User            @relation(fields: [userId], references: [id])
+  profile StudentProfile?
+
+  @@map("students")
+}
+
+// Faz parte do agregado Student: é salvo junto e apagado junto (Cascade).
+model StudentProfile {
+  id              String   @id @db.Uuid
+  studentId       String   @unique @map("student_id") @db.Uuid
+  bio             String   @db.VarChar(500)
+  income          Decimal? @db.Decimal(10, 2)
+  // BudgetRange do domínio vira duas colunas.
+  minBudget       Decimal  @map("min_budget") @db.Decimal(10, 2)
+  maxBudget       Decimal  @map("max_budget") @db.Decimal(10, 2)
+  isSmoker        Boolean  @map("is_smoker")
+  noisePreference Int      @map("noise_preference") @db.SmallInt
+  visitPreference Int      @map("visit_preference") @db.SmallInt
+  // WeeklySchedule: { "MONDAY": [{ "start": "08:00", "end": "12:00" }], ... }
+  schedule        Json     @default("{}")
+  updatedAt       DateTime @map("updated_at") @db.Timestamptz(3)
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("student_profiles")
+}
+
+model PropertyOwner {
+  id                 String             @id @db.Uuid
+  userId             String             @unique @map("user_id") @db.Uuid
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("property_owners")
+}
+
+model Administrator {
+  id          String       @id @db.Uuid
+  userId      String       @unique @map("user_id") @db.Uuid
+  permissions Permission[] @default([])
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime     @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("administrators")
+}

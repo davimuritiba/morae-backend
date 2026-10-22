@@ -1,17 +1,20 @@
-import { InvalidBioError } from '../errors/invalid-bio.error.js';
-import { InvalidCourseError } from '../errors/invalid-course.error.js';
-import { InvalidExpectedGraduationError } from '../errors/invalid-expected-graduation.error.js';
-import { InvalidIncomeError } from '../errors/invalid-income.error.js';
-import { AcademicPeriod } from '../value-objects/academic-period.vo.js';
-import { BudgetRange } from '../value-objects/budget-range.vo.js';
-import { EnrollmentNumber } from '../value-objects/enrollment-number.vo.js';
-import { PreferenceLevel } from '../value-objects/preference-level.vo.js';
-import { TimeSlot } from '../value-objects/time-slot.vo.js';
+import { InvalidBioError } from '../../../domain/errors/invalid-bio.error.js';
+import { InvalidCourseError } from '../../../domain/errors/invalid-course.error.js';
+import { InvalidExpectedGraduationError } from '../../../domain/errors/invalid-expected-graduation.error.js';
+import { InvalidIncomeError } from '../../../domain/errors/invalid-income.error.js';
+import { AcademicPeriod } from '../../../domain/value-objects/academic-period.vo.js';
+import { BudgetRange } from '../../../domain/value-objects/budget-range.vo.js';
+import { EnrollmentNumber } from '../../../domain/value-objects/enrollment-number.vo.js';
+import { PreferenceLevel } from '../../../domain/value-objects/preference-level.vo.js';
+import { TimeSlot } from '../../../domain/value-objects/time-slot.vo.js';
 import type {
   StudentProfileInput,
   WeeklySchedule,
-} from './student-profile.entity.js';
-import { Student, type CreateStudentProps } from './student.entity.js';
+} from '../../../domain/entities/student-profile.entity.js';
+import {
+  Student,
+  type CreateStudentProps,
+} from '../../../domain/entities/student.entity.js';
 
 function makeStudent(overrides: Partial<CreateStudentProps> = {}): Student {
   return Student.create({

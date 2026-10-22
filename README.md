@@ -1,118 +1,194 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Morae — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A proposta é conectar estudantes que procuram moradia ou colegas de quarto a proprietários de imóveis, com verificação de vínculo acadêmico, compatibilidade entre perfis, anúncios, visitas, chat e contratos.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+> **Situação em 22/10/2026:** o módulo de usuários tem a camada de domínio completa e o primeiro caso de uso (cadastro de estudante) implementado e testado. A API HTTP e a persistência em banco ainda não foram ligadas. Veja [Progresso do desenvolvimento](#progresso-do-desenvolvimento).
 
-## Description
+## Stack
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Item              | Tecnologia                |
+| ----------------- | ------------------------- |
+| Runtime           | Node.js 24 (ESM)          |
+| Framework         | NestJS 12                 |
+| Linguagem         | TypeScript 6 (`strict`)   |
+| Testes            | Vitest 4 + Supertest      |
+| Lint / formatação | oxlint + Prettier         |
+| Banco (planejado) | PostgreSQL 17 + Prisma 7  |
+| Observabilidade   | NestJS Observe (opcional) |
 
-## Project setup
+## Pré-requisitos
 
-```bash
-$ npm install
-```
+- **Node.js 24** e **npm 11** (testado com Node 24.18.0 e npm 11.16.0)
+- **Docker** com Docker Compose, apenas se você quiser subir o PostgreSQL
 
-## Compile and run the project
+## Configuração
 
-```bash
-# development
-$ npm run start
+1. Instale as dependências:
 
-# watch mode
-$ npm run start:dev
+   ```bash
+   npm install
+   ```
 
-# production mode
-$ npm run start:prod
-```
+2. Crie o arquivo de ambiente a partir do exemplo:
 
-## Run tests
+   ```bash
+   cp .env.example .env
+   ```
 
-```bash
-# unit tests
-$ npm run test
+   | Variável             | Obrigatória | Descrição                                                                                                               |
+   | -------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------- |
+   | `PORT`               | não         | Porta HTTP. Padrão: `3000`.                                                                                             |
+   | `OBSERVE_APP_KEY`    | não         | Chave do [NestJS Observe](https://observe.nestjs.com). Sem ela, a telemetria é descartada e a app funciona normalmente. |
+   | `OBSERVE_APP_SECRET` | não         | Segredo pareado com a chave acima.                                                                                      |
 
-# e2e tests
-$ npm run test:e2e
+   O `.env` está no `.gitignore`. **Nunca** versione credenciais.
 
-# test coverage
-$ npm run test:cov
-```
+3. (Opcional) Suba o PostgreSQL:
 
-## Deployment
+   ```bash
+   docker compose up -d
+   ```
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+   O container `morae-postgres` fica em `localhost:5432`, com usuário, senha e banco `morae`. Por enquanto a aplicação **ainda não se conecta** a ele, porque a camada de persistência com Prisma é o próximo passo.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Executando
+
+O projeto não carrega o `.env` sozinho, então passe o arquivo pela flag `--env-file` do Nest CLI.
+
+Desenvolvimento, com recarga automática:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev -- --env-file .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Produção:
 
-## Observability
+```bash
+npm run build
+```
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+```bash
+node --env-file=.env dist/main
+```
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+Com a app no ar, os endpoints disponíveis hoje são **placeholders**:
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+| Método | Rota    | Resposta                      |
+| ------ | ------- | ----------------------------- |
+| `GET`  | `/user` | `all users`                   |
+| `POST` | `/user` | `ts action create a new user` |
 
-This project is already instrumented. Create a free account at [observe.nestjs.com](https://observe.nestjs.com), add an application, and paste the generated app key and secret into the `ObserveModule.forRoot()` call in `src/app.module.ts`.
+## Testes
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+```bash
+npm test
+```
 
-## Resources
+| Comando              | O que faz                                 |
+| -------------------- | ----------------------------------------- |
+| `npm test`           | Testes unitários                          |
+| `npm run test:watch` | Testes unitários em modo watch            |
+| `npm run test:cov`   | Testes unitários com cobertura            |
+| `npm run test:e2e`   | Testes end-to-end (sobe a app em memória) |
+| `npm run lint`       | Lint com oxlint (com checagem de tipos)   |
+| `npm run format`     | Formata o código com Prettier             |
 
-Check out a few resources that may come in handy when working with NestJS:
+Convenção de testes:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- Testes **unitários** ficam na pasta `test/` de cada módulo, espelhando a estrutura do código: `src/modules/user/test/domain/entities/user.entity.spec.ts` testa `src/modules/user/domain/entities/user.entity.ts`.
+- Testes **end-to-end** ficam em `test/` na raiz, com o sufixo `.e2e-spec.ts`.
+- Arquivos `*.spec.ts` não entram no build.
 
-## Support
+## Estrutura do projeto
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+A organização é por **módulos** (contextos de negócio), e cada módulo é dividido em camadas, no estilo arquitetura limpa / DDD:
 
-## Stay in touch
+```
+src/
+├── main.ts                    # bootstrap da aplicação
+├── app.module.ts              # módulo raiz
+├── modules/
+│   ├── user/                  # contas, estudantes, proprietários, administradores
+│   ├── verification/          # verificação de documentos
+│   ├── property/              # imóveis, residências e anúncios
+│   ├── matching/              # compatibilidade entre estudantes
+│   ├── interaction/           # interesses, visitas, chat e avaliações
+│   ├── contract/              # contratos e pagamentos
+│   └── report/                # relatórios
+└── shared/                    # código comum a todos os módulos
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Dentro de cada módulo:
 
-## License
+```
+<modulo>/
+├── domain/          # regras de negócio puras, sem Nest nem banco
+│   ├── entities/
+│   ├── value-objects/
+│   ├── enums/
+│   ├── errors/
+│   └── repositories/   # contratos (classes abstratas)
+├── application/     # casos de uso e portas (ex.: Hasher)
+├── infra/           # implementações: banco, serviços externos
+├── presentation/    # controllers HTTP, DTOs e presenters
+└── test/            # testes unitários do módulo
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+As dependências apontam sempre para dentro: `presentation` → `application` → `domain`. O domínio não conhece HTTP, banco nem o Nest. Os erros de negócio estendem `DomainError` e têm um `code` (ex.: `EMAIL_ALREADY_IN_USE`), que a camada de apresentação vai traduzir para o status HTTP adequado.
+
+## Progresso do desenvolvimento
+
+### Concluído
+
+**Módulo `user`: camada de domínio**
+
+- **Entidades**
+  - `User`: conta de acesso, com nome, e-mail, CPF, hash da senha, telefone, foto, status da conta e verificação de e-mail.
+  - `Student`: raiz do agregado formado com `StudentProfile`. Tem matrícula, curso, período, previsão de formatura e status de verificação.
+  - `StudentProfile`: perfil de convivência, com bio, renda, faixa de orçamento, fumante ou não, preferências de barulho e de visitas, e agenda semanal.
+  - `PropertyOwner`: proprietário, com status de verificação.
+  - `Administrator`: administrador, com permissões (`VERIFY_DOCUMENTS`, `MODERATE_LISTINGS`, `MANAGE_USERS`, `VIEW_REPORTS`).
+- **Value objects com validação:** `Email`, `Cpf` (com dígitos verificadores), `Password`, `Phone`, `PhotoUrl`, `EnrollmentNumber`, `AcademicPeriod`, `BudgetRange`, `PreferenceLevel`, `TimeSlot`.
+- **Contratos de repositório:** `UserRepository`, `StudentRepository`, `PropertyOwnerRepository`, `AdministratorRepository`.
+
+**Módulo `user`: camada de aplicação**
+
+- **Caso de uso `RegisterStudentUseCase`**, que cadastra um estudante criando o `User` e o `Student` juntos:
+  1. Valida o formato de todos os campos com os value objects, antes de acessar o banco.
+  2. Verifica se e-mail, CPF e matrícula já estão em uso, cada um com seu erro específico.
+  3. Gera o hash da senha pela porta `Hasher`, só depois das checagens, por ser a etapa mais cara.
+  4. Salva tudo de forma atômica via `UnitOfWork`, para nunca ficar um usuário sem o estudante, nem o contrário.
+- **Portas e contratos compartilhados:** `Hasher`, `UseCase` e `UnitOfWork`.
+- **Implementações in-memory** de `UserRepository`, `StudentRepository` e `UnitOfWork`. São usadas nos testes e simulam as constraints `UNIQUE` do banco.
+
+**Regras de negócio já garantidas pelo domínio**
+
+- A conta nasce `ACTIVE`, com e-mail não verificado. Ela pode ser suspensa e reativada, e a desativação é definitiva.
+- Estudantes e proprietários começam com verificação `PENDING`, que pode ir para `VERIFIED` ou `REJECTED`. Após uma rejeição, é possível reenviar a verificação.
+- A senha fica em texto puro só de passagem: a entidade guarda apenas o hash.
+- E-mail, CPF e telefone são normalizados. O e-mail fica em minúsculas, e o CPF e o telefone ficam só com os dígitos.
+- A foto de perfil só aceita URLs `https`, o que bloqueia `javascript:`, `data:` e `file:`.
+- O perfil do estudante só pode ser criado ou alterado pelo `Student`, e campos extras vindos da requisição são descartados.
+- As entidades usam campos privados (`#`), então serializar uma entidade por engano não expõe senha nem CPF.
+
+**Qualidade**
+
+- 56 testes unitários e 1 teste e2e passando.
+- Typecheck (`strict`), lint e Prettier sem erros.
+- Revisão de segurança do módulo `user` feita e corrigida, cobrindo mass assignment, vazamento na serialização, validação de entrada e segredos fora do código.
+
+### Pendente
+
+- **Persistência real:** schema do Prisma, migrations e repositórios PostgreSQL. As dependências (`prisma`, `@prisma/client`, `@prisma/adapter-pg`, `pg`) e o `docker-compose.yml` já estão no projeto.
+- **Hasher concreto:** implementação de `Hasher` com argon2 ou bcrypt.
+- **Camada HTTP do módulo `user`:** `user.module.ts`, controller de cadastro, DTOs com validação, presenters e um filtro global que traduza `DomainError` em status HTTP. O `UserController` em `src/app.controller.ts` ainda é só um placeholder.
+- **Autenticação:** login, sessão/JWT, guards e rate limiting.
+- **Demais casos de uso do `user`:** cadastro de proprietário, edição de perfil, verificação de e-mail, suspensão de contas etc.
+- **Demais módulos:** `verification`, `property`, `matching`, `interaction`, `contract` e `report` têm só a estrutura de pastas e arquivos vazios.
+
+### Próximos passos sugeridos
+
+1. Modelar o schema do Prisma para `User` e `Student` e implementar os repositórios PostgreSQL e o `UnitOfWork` transacional.
+2. Implementar o `Hasher` com argon2.
+3. Expor `POST /students` com DTO validado e o filtro de `DomainError`.
+4. Implementar autenticação.

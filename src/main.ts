@@ -1,3 +1,5 @@
+// Primeiro import: carrega o .env antes de qualquer módulo ler process.env.
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule, ObserveInstrument } from './app.module.js';
 

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: morae-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: morae
+      POSTGRES_PASSWORD: morae
+      POSTGRES_DB: morae
+    ports:
+      - '5432:5432'
+    volumes:
+      - morae_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U morae -d morae']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  morae_pgdata:
