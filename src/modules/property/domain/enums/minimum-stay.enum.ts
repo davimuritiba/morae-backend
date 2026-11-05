@@ -1,0 +1,6 @@
+export enum MinimumStay {
+  NO_MINIMUM = 'NO_MINIMUM',
+  THREE_MONTHS = 'THREE_MONTHS',
+  SIX_MONTHS = 'SIX_MONTHS',
+  TWELVE_MONTHS = 'TWELVE_MONTHS',
+}

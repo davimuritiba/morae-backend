@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { createObserveModule } from '@nestjs/observe';
 import { UserController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { PropertyModule } from './modules/property/property.module.js';
 import { DatabaseModule } from './shared/infra/database/database.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -18,6 +19,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       serviceId: 'morae-backend',
     }),
     DatabaseModule,
+    PropertyModule,
   ],
   controllers: [UserController],
   providers: [AppService],

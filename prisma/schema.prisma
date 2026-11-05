@@ -39,6 +39,38 @@ enum Permission {
   VIEW_REPORTS
 }
 
+enum HousingType {
+  APARTMENT
+  HOUSE
+  ROOM
+  REPUBLIC
+}
+
+enum ListingStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+enum ContractType {
+  MONTHLY_RENTAL
+  PROPERTY_SHARING
+  SEASONAL
+}
+
+enum MinimumStay {
+  NO_MINIMUM
+  THREE_MONTHS
+  SIX_MONTHS
+  TWELVE_MONTHS
+}
+
 // ─── Módulo user ────────────────────────────────────────────────────────────
 
 model User {
@@ -108,7 +140,8 @@ model PropertyOwner {
   createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime           @map("updated_at") @db.Timestamptz(3)
 
-  user User @relation(fields: [userId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+  properties Property[]
 
   @@map("property_owners")
 }
@@ -123,4 +156,80 @@ model Administrator {
   user User @relation(fields: [userId], references: [id])
 
   @@map("administrators")
+}
+
+// ─── Módulo property ────────────────────────────────────────────────────────
+
+model Residence {
+  id           String   @id @db.Uuid
+  postalCode   String   @map("postal_code") @db.Char(8)
+  state        String   @db.Char(2)
+  street       String   @db.VarChar(150)
+  number       String   @db.VarChar(20)
+  complement   String?  @db.VarChar(100)
+  city         String   @db.VarChar(100)
+  neighborhood String   @db.VarChar(100)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @map("updated_at") @db.Timestamptz(3)
+
+  property Property?
+
+  @@map("residences")
+}
+
+model Property {
+  id            String      @id @db.Uuid
+  ownerId       String      @map("owner_id") @db.Uuid
+  residenceId   String      @unique @map("residence_id") @db.Uuid
+  housingType   HousingType @map("housing_type")
+  bedrooms      Int         @db.SmallInt
+  bathrooms     Int         @db.SmallInt
+  parkingSpaces Int         @default(0) @map("parking_spaces") @db.SmallInt
+  amenities     String[]    @default([])
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime    @map("updated_at") @db.Timestamptz(3)
+
+  owner     PropertyOwner @relation(fields: [ownerId], references: [id])
+  residence Residence     @relation(fields: [residenceId], references: [id], onDelete: Cascade)
+  listings  Listing[]
+
+  @@index([ownerId])
+  @@map("properties")
+}
+
+model Listing {
+  id           String        @id @db.Uuid
+  propertyId   String        @map("property_id") @db.Uuid
+  title        String        @db.VarChar(90)
+  description  String        @db.VarChar(1000)
+  rules        String?       @db.VarChar(500)
+  rent         Decimal       @db.Decimal(10, 2)
+  condominium  Decimal?      @db.Decimal(10, 2)
+  contractType ContractType  @map("contract_type")
+  minimumStay  MinimumStay   @map("minimum_stay")
+  status       ListingStatus @default(PENDING)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime      @map("updated_at") @db.Timestamptz(3)
+
+  property Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  media    ListingMedia[]
+
+  @@index([propertyId])
+  @@index([status])
+  @@map("listings")
+}
+
+model ListingMedia {
+  id        String    @id @db.Uuid
+  listingId String    @map("listing_id") @db.Uuid
+  type      MediaType
+  url       String    @db.VarChar(2048)
+  position  Int       @default(0) @db.SmallInt
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, position])
+  @@index([listingId])
+  @@map("listing_media")
 }
