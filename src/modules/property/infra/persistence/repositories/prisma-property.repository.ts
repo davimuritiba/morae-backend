@@ -13,7 +13,7 @@ export class PrismaPropertyRepository extends PropertyRepository {
   async findById(id: string): Promise<Property | null> {
     const row = await this.prisma.property.findUnique({
       where: { id },
-      include: { residence: true, listings: { include: { media: true }, orderBy: { createdAt: 'asc' }, take: 1 } },
+      include: { residence: true, cohabitants: true, listings: { include: { media: true }, orderBy: { createdAt: 'asc' }, take: 1 } },
     });
     return row ? PropertyMapper.toDomain(row) : null;
   }

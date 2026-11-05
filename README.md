@@ -161,6 +161,17 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 - **Portas e contratos compartilhados:** `Hasher`, `UseCase` e `UnitOfWork`.
 - **Implementações in-memory** de `UserRepository`, `StudentRepository` e `UnitOfWork`. São usadas nos testes e simulam as constraints `UNIQUE` do banco.
 
+**Módulo `property`: domínio, aplicação e persistência**
+
+- **Entidades** `Residence`, `Property`, `Listing` e `ListingMedia`, representando o endereço, as características do imóvel, o anúncio e suas fotos/vídeo.
+- **Relacionamento com usuários:** um imóvel pode ter vários coabitantes. A associação N:N entre `Property` e `User` é persistida por `PropertyCohabitant`, com chave composta (`propertyId`, `userId`).
+- **Caso de uso `PublishPropertyUseCase`:** cria e valida o endereço, o imóvel, o anúncio e as mídias, iniciando o anúncio com status `PENDING`.
+- **Regras cobertas no domínio:** CEP e estado válidos, limites de título/descrição/regras, valores de aluguel e condomínio, quantidades de quartos/banheiros/vagas, até 10 fotos e pelo menos um coabitante.
+- **Persistência:** `PrismaPropertyRepository` e `PropertyMapper` persistem e reconstroem o agregado usando Prisma/PostgreSQL. A criação usa writes aninhados para salvar residência, imóvel, coabitantes, anúncio e mídias.
+- **Testabilidade:** `InMemoryPropertyRepository` permite testar o caso de uso sem banco de dados.
+- **HTTP:** `PropertyController` expõe `POST /properties` para publicação de anúncios.
+- **Schema e migration:** os modelos `Residence`, `Property`, `PropertyCohabitant`, `Listing` e `ListingMedia`, seus enums e a migration de conversão do antigo `ownerId` para coabitantes estão em `prisma/schema.prisma` e `prisma/migrations/`.
+
 **Regras de negócio já garantidas pelo domínio**
 
 - A conta nasce `ACTIVE`, com e-mail não verificado. Ela pode ser suspensa e reativada, e a desativação é definitiva.
@@ -173,22 +184,22 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 
 **Qualidade**
 
-- 56 testes unitários e 1 teste e2e passando.
+- 71 testes passando.
 - Typecheck (`strict`), lint e Prettier sem erros.
 - Revisão de segurança do módulo `user` feita e corrigida, cobrindo mass assignment, vazamento na serialização, validação de entrada e segredos fora do código.
 
 ### Pendente
 
-- **Persistência real:** schema do Prisma, migrations e repositórios PostgreSQL. As dependências (`prisma`, `@prisma/client`, `@prisma/adapter-pg`, `pg`) e o `docker-compose.yml` já estão no projeto.
+- **Persistência real dos casos de uso restantes:** o schema, migrations e repositório do módulo `property` já estão implementados; ainda faltam concluir a persistência transacional e os casos de uso restantes do módulo `user`.
 - **Hasher concreto:** implementação de `Hasher` com argon2 ou bcrypt.
 - **Camada HTTP do módulo `user`:** `user.module.ts`, controller de cadastro, DTOs com validação, presenters e um filtro global que traduza `DomainError` em status HTTP. O `UserController` em `src/app.controller.ts` ainda é só um placeholder.
 - **Autenticação:** login, sessão/JWT, guards e rate limiting.
 - **Demais casos de uso do `user`:** cadastro de proprietário, edição de perfil, verificação de e-mail, suspensão de contas etc.
-- **Demais módulos:** `verification`, `property`, `matching`, `interaction`, `contract` e `report` têm só a estrutura de pastas e arquivos vazios.
+- **Demais módulos:** `verification`, `matching`, `interaction`, `contract` e `report` ainda têm só a estrutura de pastas e arquivos vazios.
 
 ### Próximos passos sugeridos
 
-1. Modelar o schema do Prisma para `User` e `Student` e implementar os repositórios PostgreSQL e o `UnitOfWork` transacional.
+1. Implementar a persistência transacional e concluir os casos de uso restantes de `User` e `Student`.
 2. Implementar o `Hasher` com argon2.
 3. Expor `POST /students` com DTO validado e o filtro de `DomainError`.
 4. Implementar autenticação.

@@ -10,7 +10,7 @@ import { Property } from '../../../domain/entities/property.entity.js';
 import { Residence } from '../../../domain/entities/residence.entity.js';
 
 export type PropertyWithListing = Prisma.PropertyGetPayload<{
-  include: { residence: true; listings: { include: { media: true } } };
+  include: { residence: true; cohabitants: true; listings: { include: { media: true } } };
 }>;
 
 const enumValue = <T extends string>(value: T): T => value;
@@ -50,7 +50,7 @@ export class PropertyMapper {
       updatedAt: rawListing.updatedAt,
     });
     return Property.restore(raw.id, {
-      ownerId: raw.ownerId,
+      cohabitantIds: raw.cohabitants.map((cohabitant) => cohabitant.userId),
       residence,
       housingType: enumValue(raw.housingType) as HousingType,
       bedrooms: raw.bedrooms,
@@ -73,7 +73,9 @@ export class PropertyMapper {
       amenities: property.amenities.slice(),
       createdAt: property.createdAt,
       updatedAt: property.updatedAt,
-      owner: { connect: { id: property.ownerId } },
+      cohabitants: {
+        create: property.cohabitantIds.map((userId) => ({ user: { connect: { id: userId } } })),
+      },
       residence: {
         create: {
           id: property.residence.id,

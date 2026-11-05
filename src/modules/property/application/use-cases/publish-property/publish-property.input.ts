@@ -4,7 +4,7 @@ import type { MediaType } from '../../../domain/enums/media-type.enum.js';
 import type { MinimumStay } from '../../../domain/enums/minimum-stay.enum.js';
 
 export interface PublishPropertyInput {
-  ownerId: string;
+  cohabitantIds: string[];
   postalCode: string;
   state: string;
   street: string;
