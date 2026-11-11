@@ -50,6 +50,7 @@ export class PropertyMapper {
       updatedAt: rawListing.updatedAt,
     });
     return Property.restore(raw.id, {
+      ownerId: raw.ownerId,
       cohabitantIds: raw.cohabitants.map((cohabitant) => cohabitant.userId),
       residence,
       housingType: enumValue(raw.housingType) as HousingType,
@@ -66,6 +67,7 @@ export class PropertyMapper {
   static toPersistence(property: Property): Prisma.PropertyCreateInput {
     return {
       id: property.id,
+      owner: { connect: { id: property.ownerId } },
       housingType: property.housingType,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,

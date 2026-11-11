@@ -15,6 +15,7 @@ export class PublishPropertyUseCase implements UseCase<PublishPropertyInput, Pub
     const media = (input.media ?? []).map((item) => ListingMedia.create(item));
     const listing = Listing.create({ ...input, media });
     const property = Property.create({
+      ownerId: input.ownerId,
       cohabitantIds: input.cohabitantIds,
       residence,
       housingType: input.housingType,

@@ -5,6 +5,7 @@ import { Listing } from './listing.entity.js';
 import { Residence } from './residence.entity.js';
 
 export interface PropertyProps {
+  ownerId: string;
   cohabitantIds: string[];
   residence: Residence;
   housingType: HousingType;
@@ -46,6 +47,7 @@ export class Property {
   }
 
   get id(): string { return this.#id; }
+  get ownerId(): string { return this.#props.ownerId; }
   get cohabitantIds(): readonly string[] { return this.#props.cohabitantIds; }
   get residence(): Residence { return this.#props.residence; }
   get housingType(): HousingType { return this.#props.housingType; }

@@ -142,6 +142,7 @@ model PropertyOwner {
   updatedAt          DateTime           @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id])
+  properties Property[]
 
   @@map("property_owners")
 }
@@ -179,6 +180,7 @@ model Residence {
 
 model Property {
   id            String      @id @db.Uuid
+  ownerId       String      @map("owner_id") @db.Uuid
   residenceId   String      @unique @map("residence_id") @db.Uuid
   housingType   HousingType @map("housing_type")
   bedrooms      Int         @db.SmallInt
@@ -188,6 +190,7 @@ model Property {
   createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime    @map("updated_at") @db.Timestamptz(3)
 
+  owner       PropertyOwner        @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   residence   Residence            @relation(fields: [residenceId], references: [id], onDelete: Cascade)
   cohabitants PropertyCohabitant[]
   listings    Listing[]
