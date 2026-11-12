@@ -7,6 +7,9 @@ export async function resetDatabase(prisma: PrismaService): Promise<void> {
   assertTestDatabase(process.env['DATABASE_URL']);
 
   await prisma.$executeRaw`
-    TRUNCATE TABLE users, students, student_profiles, property_owners, administrators CASCADE
+    TRUNCATE TABLE
+      users, students, student_profiles, property_owners, administrators,
+      residences, properties, property_cohabitants, listings, listing_media
+    CASCADE
   `;
 }

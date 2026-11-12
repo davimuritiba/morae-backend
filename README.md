@@ -265,6 +265,17 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
   - `422` para as demais regras de negócio, como CPF ou e-mail inválidos.
 - **`UserModule`:** liga cada contrato à sua implementação (Prisma, Argon2) e monta o caso de uso.
 
+**Módulo `property`: domínio, aplicação e persistência**
+
+- **Entidades** `Residence`, `Property`, `Listing` e `ListingMedia`, representando o endereço, as características do imóvel, o anúncio e suas fotos/vídeo.
+- **Relacionamento com usuários:** um imóvel pode ter vários coabitantes. A associação N:N entre `Property` e `User` é persistida por `PropertyCohabitant`, com chave composta (`propertyId`, `userId`).
+- **Caso de uso `PublishPropertyUseCase`:** cria e valida o endereço, o imóvel, o anúncio e as mídias, iniciando o anúncio com status `PENDING`.
+- **Regras cobertas no domínio:** CEP e estado válidos, limites de título/descrição/regras, valores de aluguel e condomínio, quantidades de quartos/banheiros/vagas, até 10 fotos e pelo menos um coabitante.
+- **Persistência:** `PrismaPropertyRepository` e `PropertyMapper` persistem e reconstroem o agregado usando Prisma/PostgreSQL. A criação usa writes aninhados para salvar residência, imóvel, coabitantes, anúncio e mídias.
+- **Testabilidade:** `InMemoryPropertyRepository` permite testar o caso de uso sem banco de dados.
+- **HTTP:** `PropertyController` expõe `POST /properties` para publicação de anúncios.
+- **Schema e migration:** os modelos `Residence`, `Property`, `PropertyCohabitant`, `Listing` e `ListingMedia`, seus enums e a migration de conversão do antigo `ownerId` para coabitantes estão em `prisma/schema.prisma` e `prisma/migrations/`.
+
 **Regras de negócio já garantidas pelo domínio**
 
 - A conta nasce `ACTIVE`, com e-mail não verificado. Ela pode ser suspensa e reativada, e a desativação é definitiva.
@@ -288,7 +299,7 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 - **Demais casos de uso do `user`:** cadastro de proprietário, consulta e edição de perfil, atualização dos dados acadêmicos, verificação de e-mail e suspensão de contas.
 - **Verificação de vínculo com a UFAL** (módulo `verification`): envio de documentos e revisão pelo administrador.
 - **Formato da matrícula:** a regra do `EnrollmentNumber` é provisória (6 a 15 dígitos) até o padrão oficial da UFAL ser confirmado.
-- **Demais módulos:** `property`, `matching`, `interaction`, `contract` e `report` têm só a estrutura de pastas e arquivos vazios.
+- **Demais módulos:** `matching`, `interaction`, `contract` e `report` ainda têm só a estrutura de pastas e arquivos vazios.
 
 ### Próximos passos sugeridos
 
