@@ -1,4 +1,5 @@
 import { VerificationStatus } from '../../../../../../shared/domain/enums/verification-status.enum.js';
+import { PrismaTransactionContext } from '../../../../../../shared/infra/database/prisma-transaction-context.js';
 import { PrismaService } from '../../../../../../shared/infra/database/prisma.service.js';
 import { resetDatabase } from '../../../../../../../test/integration/reset-database.js';
 import type { StudentProfileInput } from '../../../../domain/entities/student-profile.entity.js';
@@ -32,8 +33,9 @@ function makeProfileInput(
 
 describe('PrismaStudentRepository (integração)', () => {
   const prisma = new PrismaService();
-  const users = new PrismaUserRepository(prisma);
-  const repository = new PrismaStudentRepository(prisma);
+  const db = new PrismaTransactionContext(prisma);
+  const users = new PrismaUserRepository(db);
+  const repository = new PrismaStudentRepository(db);
 
   // Student exige um User existente (chave estrangeira).
   async function makeStudent(

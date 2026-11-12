@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { rethrowUniqueViolation } from '../../../../../shared/infra/database/prisma-errors.js';
-import { PrismaService } from '../../../../../shared/infra/database/prisma.service.js';
+import { PrismaTransactionContext } from '../../../../../shared/infra/database/prisma-transaction-context.js';
 import { isUuid } from '../../../../../shared/infra/database/uuid.js';
 import type { User } from '../../../domain/entities/user.entity.js';
 import { CpfAlreadyInUseError } from '../../../domain/errors/cpf-already-in-use.error.js';
@@ -18,26 +18,26 @@ const UNIQUE_ERRORS = {
 
 @Injectable()
 export class PrismaUserRepository extends UserRepository {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(private readonly db: PrismaTransactionContext) {
     super();
   }
 
   async findById(id: string): Promise<User | null> {
     if (!isUuid(id)) return null;
 
-    const row = await this.prisma.user.findUnique({ where: { id } });
+    const row = await this.db.client.user.findUnique({ where: { id } });
     return row ? UserMapper.toDomain(row) : null;
   }
 
   async findByEmail(email: Email): Promise<User | null> {
-    const row = await this.prisma.user.findUnique({
+    const row = await this.db.client.user.findUnique({
       where: { email: email.value },
     });
     return row ? UserMapper.toDomain(row) : null;
   }
 
   async existsByEmail(email: Email): Promise<boolean> {
-    const row = await this.prisma.user.findUnique({
+    const row = await this.db.client.user.findUnique({
       where: { email: email.value },
       select: { id: true },
     });
@@ -45,7 +45,7 @@ export class PrismaUserRepository extends UserRepository {
   }
 
   async existsByCpf(cpf: Cpf): Promise<boolean> {
-    const row = await this.prisma.user.findUnique({
+    const row = await this.db.client.user.findUnique({
       where: { cpf: cpf.value },
       select: { id: true },
     });
@@ -58,7 +58,7 @@ export class PrismaUserRepository extends UserRepository {
     const data = UserMapper.toPersistence(user);
 
     try {
-      await this.prisma.user.upsert({
+      await this.db.client.user.upsert({
         where: { id: data.id },
         create: data,
         update: data,

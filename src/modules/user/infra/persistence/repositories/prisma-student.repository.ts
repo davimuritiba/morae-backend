@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { rethrowUniqueViolation } from '../../../../../shared/infra/database/prisma-errors.js';
-import { PrismaService } from '../../../../../shared/infra/database/prisma.service.js';
+import { PrismaTransactionContext } from '../../../../../shared/infra/database/prisma-transaction-context.js';
 import { isUuid } from '../../../../../shared/infra/database/uuid.js';
 import type { Student } from '../../../domain/entities/student.entity.js';
 import { EnrollmentNumberAlreadyInUseError } from '../../../domain/errors/enrollment-number-already-in-use.error.js';
@@ -17,14 +17,14 @@ const UNIQUE_ERRORS = {
 
 @Injectable()
 export class PrismaStudentRepository extends StudentRepository {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(private readonly db: PrismaTransactionContext) {
     super();
   }
 
   async findById(id: string): Promise<Student | null> {
     if (!isUuid(id)) return null;
 
-    const row = await this.prisma.student.findUnique({
+    const row = await this.db.client.student.findUnique({
       where: { id },
       include: studentInclude,
     });
@@ -34,7 +34,7 @@ export class PrismaStudentRepository extends StudentRepository {
   async findByUserId(userId: string): Promise<Student | null> {
     if (!isUuid(userId)) return null;
 
-    const row = await this.prisma.student.findUnique({
+    const row = await this.db.client.student.findUnique({
       where: { userId },
       include: studentInclude,
     });
@@ -44,7 +44,7 @@ export class PrismaStudentRepository extends StudentRepository {
   async existsByEnrollmentNumber(
     enrollmentNumber: EnrollmentNumber,
   ): Promise<boolean> {
-    const row = await this.prisma.student.findUnique({
+    const row = await this.db.client.student.findUnique({
       where: { enrollmentNumber: enrollmentNumber.value },
       select: { id: true },
     });
@@ -61,7 +61,7 @@ export class PrismaStudentRepository extends StudentRepository {
       : null;
 
     try {
-      await this.prisma.student.upsert({
+      await this.db.client.student.upsert({
         where: { id: data.id },
         create: {
           ...data,

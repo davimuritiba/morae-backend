@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
-import { UserController } from './app.controller.js';
-import { AppService } from './app.service.js';
+import { UserModule } from './modules/user/user.module.js';
 import { DatabaseModule } from './shared/infra/database/database.module.js';
+import { DomainErrorFilter } from './shared/presentation/filters/domain-error.filter.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -18,8 +19,23 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       serviceId: 'morae-backend',
     }),
     DatabaseModule,
+    UserModule,
   ],
-  controllers: [UserController],
-  providers: [AppService],
+  providers: [
+    // Registrados como providers (e não em main.ts) para valerem também nos
+    // testes e2e, que sobem o AppModule sem passar pelo main.ts.
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        // Recusa (400) campos que o DTO não declara.
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        // Entrega ao controller uma instância do DTO, sem conversões
+        // implícitas de tipo ("3" continua string e falha no @IsInt).
+        transform: true,
+      }),
+    },
+    { provide: APP_FILTER, useClass: DomainErrorFilter },
+  ],
 })
 export class AppModule {}

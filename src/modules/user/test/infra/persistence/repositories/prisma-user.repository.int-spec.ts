@@ -1,3 +1,4 @@
+import { PrismaTransactionContext } from '../../../../../../shared/infra/database/prisma-transaction-context.js';
 import { PrismaService } from '../../../../../../shared/infra/database/prisma.service.js';
 import { resetDatabase } from '../../../../../../../test/integration/reset-database.js';
 import { User } from '../../../../domain/entities/user.entity.js';
@@ -23,7 +24,8 @@ function makeUser(overrides: { email?: string; cpf?: string } = {}): User {
 
 describe('PrismaUserRepository (integração)', () => {
   const prisma = new PrismaService();
-  const repository = new PrismaUserRepository(prisma);
+  const db = new PrismaTransactionContext(prisma);
+  const repository = new PrismaUserRepository(db);
 
   beforeEach(async () => {
     await resetDatabase(prisma);
