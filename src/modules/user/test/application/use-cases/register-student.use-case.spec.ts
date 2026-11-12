@@ -1,7 +1,10 @@
 import { VerificationStatus } from '../../../../../shared/domain/enums/verification-status.enum.js';
 import { InMemoryUnitOfWork } from '../../../../../shared/infra/database/in-memory-unit-of-work.js';
+import { FakeLogger } from '../../../../../shared/test/fakes/fake-logger.js';
+import { FixedClock } from '../../../../../shared/test/fakes/fixed-clock.js';
 import type { RegisterStudentInput } from '../../../application/use-cases/register-student/register-student.input.js';
 import { RegisterStudentUseCase } from '../../../application/use-cases/register-student/register-student.use-case.js';
+import { SendEmailVerificationUseCase } from '../../../application/use-cases/send-email-verification/send-email-verification.use-case.js';
 import { AccountStatus } from '../../../domain/enums/account-status.enum.js';
 import { CpfAlreadyInUseError } from '../../../domain/errors/cpf-already-in-use.error.js';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error.js';
@@ -14,9 +17,12 @@ import { InvalidEnrollmentNumberError } from '../../../domain/errors/invalid-enr
 import { InvalidNameError } from '../../../domain/errors/invalid-name.error.js';
 import { InvalidPasswordError } from '../../../domain/errors/invalid-password.error.js';
 import { InvalidPhoneError } from '../../../domain/errors/invalid-phone.error.js';
+import { InMemoryEmailVerificationTokenRepository } from '../../../infra/persistence/in-memory/in-memory-email-verification-token.repository.js';
 import { InMemoryStudentRepository } from '../../../infra/persistence/in-memory/in-memory-student.repository.js';
 import { InMemoryUserRepository } from '../../../infra/persistence/in-memory/in-memory-user.repository.js';
+import { FakeEmailVerificationNotifier } from '../../fakes/fake-email-verification-notifier.js';
 import { FakeHasher } from '../../fakes/fake-hasher.js';
+import { FakeVerificationTokenGenerator } from '../../fakes/fake-verification-token-generator.js';
 
 function makeInput(
   overrides: Partial<RegisterStudentInput> = {},
@@ -39,18 +45,64 @@ describe('RegisterStudentUseCase', () => {
   let users: InMemoryUserRepository;
   let students: InMemoryStudentRepository;
   let hasher: FakeHasher;
+  let tokens: InMemoryEmailVerificationTokenRepository;
+  let notifier: FakeEmailVerificationNotifier;
+  let logger: FakeLogger;
   let sut: RegisterStudentUseCase;
 
   beforeEach(() => {
     users = new InMemoryUserRepository();
     students = new InMemoryStudentRepository();
     hasher = new FakeHasher();
+    tokens = new InMemoryEmailVerificationTokenRepository();
+    notifier = new FakeEmailVerificationNotifier();
+    logger = new FakeLogger();
+    const unitOfWork = new InMemoryUnitOfWork();
+    const sendEmailVerification = new SendEmailVerificationUseCase(
+      users,
+      tokens,
+      new FakeVerificationTokenGenerator(),
+      notifier,
+      new FixedClock(new Date('2026-11-12T10:00:00.000Z')),
+      unitOfWork,
+      { tokenTtlMs: 24 * 60 * 60 * 1000 },
+    );
     sut = new RegisterStudentUseCase(
       users,
       students,
       hasher,
-      new InMemoryUnitOfWork(),
+      unitOfWork,
+      sendEmailVerification,
+      logger,
     );
+  });
+
+  it('envia o link de verificação para o e-mail cadastrado', async () => {
+    const { userId } = await sut.execute(makeInput());
+
+    expect(notifier.sent).toHaveLength(1);
+    expect(notifier.sent[0].to).toBe('maria@ufal.br');
+    expect(tokens.items[0].userId).toBe(userId);
+  });
+
+  it('conclui o cadastro mesmo se o e-mail falhar, registrando o erro', async () => {
+    const failure = new Error('servidor de e-mail fora do ar');
+    notifier.failWith = failure;
+
+    const output = await sut.execute(makeInput());
+
+    expect(output.userId).toBe(users.items[0].id);
+    expect(students.items).toHaveLength(1);
+    expect(logger.errors).toHaveLength(1);
+    expect(logger.errors[0].message).toContain(output.userId);
+    expect(logger.errors[0].error).toBe(failure);
+  });
+
+  it('não envia e-mail quando o cadastro é recusado', async () => {
+    await expect(sut.execute(makeInput({ cpf: '123' }))).rejects.toThrow();
+
+    expect(notifier.sent).toHaveLength(0);
+    expect(tokens.items).toHaveLength(0);
   });
 
   it('cria o usuário e o estudante vinculados', async () => {

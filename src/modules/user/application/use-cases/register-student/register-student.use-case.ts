@@ -1,3 +1,4 @@
+import type { Logger } from '../../../../../shared/application/logger.js';
 import type { UnitOfWork } from '../../../../../shared/application/unit-of-work.js';
 import type { UseCase } from '../../../../../shared/application/use-case.js';
 import { Student } from '../../../domain/entities/student.entity.js';
@@ -14,11 +15,13 @@ import { EnrollmentNumber } from '../../../domain/value-objects/enrollment-numbe
 import { Password } from '../../../domain/value-objects/password.vo.js';
 import { Phone } from '../../../domain/value-objects/phone.vo.js';
 import type { Hasher } from '../../ports/hasher.port.js';
+import type { SendEmailVerificationUseCase } from '../send-email-verification/send-email-verification.use-case.js';
 import type { RegisterStudentInput } from './register-student.input.js';
 import type { RegisterStudentOutput } from './register-student.output.js';
 
 // Cadastro de estudante: cria a conta (User) e o perfil acadêmico (Student)
-// juntos. A verificação do vínculo com a UFAL começa como PENDING.
+// juntos e envia o link de verificação do e-mail. A verificação do vínculo
+// com a UFAL começa como PENDING.
 export class RegisterStudentUseCase implements UseCase<
   RegisterStudentInput,
   RegisterStudentOutput
@@ -28,6 +31,8 @@ export class RegisterStudentUseCase implements UseCase<
     private readonly students: StudentRepository,
     private readonly hasher: Hasher,
     private readonly unitOfWork: UnitOfWork,
+    private readonly sendEmailVerification: SendEmailVerificationUseCase,
+    private readonly logger: Logger,
   ) {}
 
   async execute(input: RegisterStudentInput): Promise<RegisterStudentOutput> {
@@ -75,6 +80,17 @@ export class RegisterStudentUseCase implements UseCase<
       await this.users.save(user);
       await this.students.save(student);
     });
+
+    // 5. E-mail de verificação. O cadastro já está gravado: uma falha no
+    // envio não pode desfazê-lo, e o usuário pode pedir o reenvio depois.
+    try {
+      await this.sendEmailVerification.execute({ userId: user.id });
+    } catch (error) {
+      this.logger.error(
+        `Falha ao enviar o e-mail de verificação do usuário ${user.id}.`,
+        error,
+      );
+    }
 
     return { userId: user.id, studentId: student.id };
   }

@@ -17,5 +17,15 @@ services:
       timeout: 5s
       retries: 10
 
+  # Servidor SMTP de desenvolvimento: recebe os e-mails sem entregá-los e os
+  # mostra em http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.33
+    container_name: morae-mailpit
+    restart: unless-stopped
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # interface web e API
+
 volumes:
   morae_pgdata:

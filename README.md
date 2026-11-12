@@ -2,26 +2,28 @@
 
 API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A proposta é conectar estudantes que procuram moradia ou colegas de quarto a proprietários de imóveis, com verificação de vínculo acadêmico, compatibilidade entre perfis, anúncios, visitas, chat e contratos.
 
-> **Situação em 23/10/2026:** o cadastro de estudante funciona de ponta a ponta. A rota `POST /students` valida os dados, aplica as regras de domínio, gera o hash da senha com Argon2 e grava no PostgreSQL numa única transação. Ainda faltam a autenticação e os demais módulos. Veja [Progresso do desenvolvimento](#progresso-do-desenvolvimento).
+> **Situação em 12/11/2026:** o cadastro de estudante funciona de ponta a ponta. A rota `POST /students` valida os dados, aplica as regras de domínio, gera o hash da senha com Argon2, grava no PostgreSQL numa única transação e envia um link de verificação do e-mail, confirmado por `POST /email-verification/confirm`. Ainda faltam a autenticação e os demais módulos. Veja [Progresso do desenvolvimento](#progresso-do-desenvolvimento).
 
 ## Stack
 
-| Item              | Tecnologia                              |
-| ----------------- | --------------------------------------- |
-| Runtime           | Node.js 24 (ESM)                        |
-| Framework         | NestJS 12                               |
-| Linguagem         | TypeScript 6 (`strict`)                 |
-| Banco             | PostgreSQL 17 + Prisma 7 (adapter `pg`) |
-| Validação HTTP    | class-validator + `ValidationPipe`      |
-| Hash de senha     | Argon2id (`argon2`)                     |
-| Testes            | Vitest 4 + Supertest                    |
-| Lint / formatação | oxlint + Prettier                       |
-| Observabilidade   | NestJS Observe (opcional)               |
+| Item                  | Tecnologia                                      |
+| --------------------- | ----------------------------------------------- |
+| Runtime               | Node.js 24 (ESM)                                |
+| Framework             | NestJS 12                                       |
+| Linguagem             | TypeScript 6 (`strict`)                         |
+| Banco                 | PostgreSQL 17 + Prisma 7 (adapter `pg`)         |
+| Validação HTTP        | class-validator + `ValidationPipe`              |
+| Hash de senha         | Argon2id (`argon2`)                             |
+| E-mail                | `nodemailer` (SMTP); Mailpit em desenvolvimento |
+| Limite de requisições | `@nestjs/throttler`                             |
+| Testes                | Vitest 4 + Supertest                            |
+| Lint / formatação     | oxlint + Prettier                               |
+| Observabilidade       | NestJS Observe (opcional)                       |
 
 ## Pré-requisitos
 
 - **Node.js 24** e **npm 11** (testado com Node 24.18.0 e npm 11.16.0)
-- **Docker** com Docker Compose, para o PostgreSQL. A aplicação, os testes de integração e os testes e2e precisam dele. Os testes unitários, não.
+- **Docker** com Docker Compose, para o PostgreSQL e o Mailpit (servidor de e-mail de desenvolvimento). A aplicação, os testes de integração e os testes e2e precisam deles. Os testes unitários, não.
 
 ## Configuração
 
@@ -37,23 +39,31 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
    cp .env.example .env
    ```
 
-   | Variável             | Obrigatória | Descrição                                                                                                                                                |
-   | -------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-   | `DATABASE_URL`       | **sim**     | Conexão com o PostgreSQL. Com o `docker-compose.yml` do projeto: `postgresql://morae:morae@localhost:5432/morae?schema=public`.                          |
-   | `PORT`               | não         | Porta HTTP. Padrão: `3000`.                                                                                                                              |
-   | `TEST_DATABASE_URL`  | não         | Banco dos testes de integração e e2e. O nome precisa terminar em `_test`. Se omitida, usa o banco da `DATABASE_URL` com o sufixo `_test` (`morae_test`). |
-   | `OBSERVE_APP_KEY`    | não         | Chave do [NestJS Observe](https://observe.nestjs.com). Sem ela, a telemetria é descartada e a app funciona normalmente.                                  |
-   | `OBSERVE_APP_SECRET` | não         | Segredo pareado com a chave acima.                                                                                                                       |
+   | Variável                       | Obrigatória | Descrição                                                                                                                                                |
+   | ------------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `DATABASE_URL`                 | **sim**     | Conexão com o PostgreSQL. Com o `docker-compose.yml` do projeto: `postgresql://morae:morae@localhost:5432/morae?schema=public`.                          |
+   | `PORT`                         | não         | Porta HTTP. Padrão: `3000`.                                                                                                                              |
+   | `TEST_DATABASE_URL`            | não         | Banco dos testes de integração e e2e. O nome precisa terminar em `_test`. Se omitida, usa o banco da `DATABASE_URL` com o sufixo `_test` (`morae_test`). |
+   | `OBSERVE_APP_KEY`              | não         | Chave do [NestJS Observe](https://observe.nestjs.com). Sem ela, a telemetria é descartada e a app funciona normalmente.                                  |
+   | `OBSERVE_APP_SECRET`           | não         | Segredo pareado com a chave acima.                                                                                                                       |
+   | `SMTP_HOST`                    | **sim**     | Servidor SMTP. Com o Mailpit do `docker-compose.yml`: `localhost`.                                                                                       |
+   | `SMTP_PORT`                    | **sim**     | Porta SMTP. Com o Mailpit: `1025`.                                                                                                                       |
+   | `SMTP_SECURE`                  | não         | `true` para TLS direto (porta 465). Padrão: `false`.                                                                                                     |
+   | `SMTP_USER` / `SMTP_PASSWORD`  | não         | Credenciais do SMTP. O Mailpit não exige.                                                                                                                |
+   | `MAIL_FROM`                    | **sim**     | Remetente dos e-mails, ex.: `"Moraê <nao-responda@morae.local>"`.                                                                                        |
+   | `APP_WEB_URL`                  | **sim**     | Endereço do front-end. O link de verificação é `<APP_WEB_URL>/verificar-email?token=...`.                                                                |
+   | `EMAIL_VERIFICATION_TTL_HOURS` | não         | Validade do link de verificação, em horas. Padrão: `24`.                                                                                                 |
 
-   O `.env` está no `.gitignore`. **Nunca** versione credenciais.
+   O `.env` está no `.gitignore`. **Nunca** versione credenciais. Os valores do `.env.example` já funcionam com o Docker Compose do projeto.
 
-3. Suba o PostgreSQL:
+3. Suba o PostgreSQL e o Mailpit:
 
    ```bash
    npm run db:up
    ```
 
-   O container `morae-postgres` fica em `localhost:5432`, com usuário, senha e banco `morae`. Os dados ficam no volume `morae_pgdata` e sobrevivem a `npm run db:down`.
+   - O container `morae-postgres` fica em `localhost:5432`, com usuário, senha e banco `morae`. Os dados ficam no volume `morae_pgdata` e sobrevivem a `npm run db:down`.
+   - O container `morae-mailpit` recebe todos os e-mails enviados pela aplicação, sem entregá-los de verdade. Eles aparecem em **http://localhost:8025**.
 
 4. Crie as tabelas aplicando as migrations:
 
@@ -67,8 +77,8 @@ O modelo do banco fica em `prisma/schema.prisma`, e o SQL que cria e altera as t
 
 | Comando               | O que faz                                                        |
 | --------------------- | ---------------------------------------------------------------- |
-| `npm run db:up`       | Sobe o PostgreSQL no Docker                                      |
-| `npm run db:down`     | Para o container (os dados continuam no volume)                  |
+| `npm run db:up`       | Sobe o PostgreSQL e o Mailpit no Docker                          |
+| `npm run db:down`     | Para os containers (os dados do banco continuam no volume)       |
 | `npm run db:migrate`  | Aplica as migrations pendentes e cria uma nova se o schema mudou |
 | `npm run db:generate` | Gera o Prisma Client de novo                                     |
 | `npm run db:studio`   | Abre o Prisma Studio para ver e editar os dados no navegador     |
@@ -92,7 +102,7 @@ Não edite uma migration que já foi aplicada. Para corrigir algo, crie uma nova
 
 ## Executando
 
-O `.env` é carregado automaticamente pelo `src/main.ts`. Na subida, a aplicação se conecta ao banco e falha logo se ele estiver fora do ar ou se a `DATABASE_URL` não estiver definida.
+O `.env` é carregado automaticamente pelo `src/main.ts`. Na subida, a aplicação se conecta ao banco e falha logo se ele estiver fora do ar ou se faltar alguma variável obrigatória (`DATABASE_URL`, as de SMTP, `MAIL_FROM` ou `APP_WEB_URL`).
 
 Desenvolvimento, com recarga automática:
 
@@ -114,7 +124,7 @@ npm run start:prod
 
 ### `POST /students`
 
-Cadastra um estudante, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`.
+Cadastra um estudante, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`, e um link de verificação é enviado para o e-mail informado. Se o envio do e-mail falhar, o cadastro continua valendo: o erro vai para o log e o usuário pode pedir o reenvio.
 
 Corpo da requisição:
 
@@ -153,6 +163,33 @@ Erros:
 
 Os erros `409` e `422` têm o corpo `{ "statusCode": 409, "code": "EMAIL_ALREADY_IN_USE", "message": "Este e-mail já está cadastrado." }`.
 
+### `POST /email-verification/confirm`
+
+Confirma o e-mail com o token do link. É chamada pela página `/verificar-email` do front-end, que lê o `token` da URL.
+
+```json
+{ "token": "<token do link>" }
+```
+
+| Status | Quando                                                                       |
+| ------ | ---------------------------------------------------------------------------- |
+| `204`  | E-mail verificado                                                            |
+| `400`  | Corpo sem `token` ou com token longo demais                                  |
+| `422`  | Token inexistente, expirado ou já usado (`INVALID_EMAIL_VERIFICATION_TOKEN`) |
+| `429`  | Mais de 10 tentativas por minuto do mesmo IP                                 |
+
+O link vale por `EMAIL_VERIFICATION_TTL_HOURS` (24 h por padrão) e só pode ser usado uma vez.
+
+### `POST /email-verification/resend`
+
+Envia um novo link de verificação. Os links anteriores deixam de funcionar.
+
+```json
+{ "email": "maria@ufal.br" }
+```
+
+Responde **sempre `202 Accepted`**, sem corpo, exista ou não uma conta com esse e-mail, e o envio acontece em segundo plano. Assim, nem a resposta nem o tempo dela revelam quais e-mails estão cadastrados. Contas já verificadas, suspensas ou desativadas não recebem e-mail. O limite é de **3 pedidos a cada 15 minutos por IP** (depois disso, `429`).
+
 ## Testes
 
 ```bash
@@ -169,7 +206,10 @@ npm test
 | `npm run lint`       | Lint com oxlint (com checagem de tipos)                                  |
 | `npm run format`     | Formata o código com Prettier                                            |
 
-Os testes de integração e e2e precisam do PostgreSQL rodando (`npm run db:up`). Eles usam um banco separado, `morae_test`, que é criado e recebe as migrations automaticamente na primeira execução. Os dados desse banco são apagados antes de cada teste, e a limpeza se recusa a rodar em qualquer banco cujo nome não termine em `_test`.
+Os testes de integração e e2e precisam do PostgreSQL e do Mailpit rodando (`npm run db:up`).
+
+- **Banco:** eles usam um banco separado, `morae_test`, que é criado e recebe as migrations automaticamente na primeira execução. Os dados desse banco são apagados antes de cada teste, e a limpeza se recusa a rodar em qualquer banco cujo nome não termine em `_test`.
+- **E-mail:** os testes enviam e-mails de verdade para o Mailpit e os conferem pela API dele. A caixa do Mailpit é esvaziada durante os testes.
 
 Convenção de testes:
 
@@ -228,7 +268,8 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
   - `PropertyOwner`: proprietário, com status de verificação.
   - `Administrator`: administrador, com permissões (`VERIFY_DOCUMENTS`, `MODERATE_LISTINGS`, `MANAGE_USERS`, `VIEW_REPORTS`).
 - **Value objects com validação:** `Email`, `Cpf` (com dígitos verificadores), `Password`, `Phone`, `PhotoUrl`, `EnrollmentNumber`, `AcademicPeriod`, `BudgetRange`, `PreferenceLevel`, `TimeSlot`.
-- **Contratos de repositório:** `UserRepository`, `StudentRepository`, `PropertyOwnerRepository`, `AdministratorRepository`.
+- **Contratos de repositório:** `UserRepository`, `StudentRepository`, `PropertyOwnerRepository`, `AdministratorRepository`, `EmailVerificationTokenRepository`.
+- **`EmailVerificationToken`:** token de uso único para confirmar o e-mail, com expiração. Guarda só o hash do token.
 
 **Módulo `user`: camada de aplicação**
 
@@ -237,8 +278,13 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
   2. Verifica se e-mail, CPF e matrícula já estão em uso, cada um com seu erro específico.
   3. Gera o hash da senha pela porta `Hasher`, só depois das checagens, por ser a etapa mais cara.
   4. Salva tudo de forma atômica via `UnitOfWork`, para nunca ficar um usuário sem o estudante, nem o contrário.
-- **Portas e contratos compartilhados:** `Hasher`, `UseCase` e `UnitOfWork`.
-- **Implementações in-memory** de `UserRepository`, `StudentRepository` e `UnitOfWork`. São usadas nos testes unitários e simulam as constraints `UNIQUE` do banco.
+  5. Envia o link de verificação do e-mail. Uma falha nesse envio é registrada no log e não desfaz o cadastro.
+- **Casos de uso da verificação de e-mail:**
+  - `SendEmailVerificationUseCase`: troca os tokens anteriores por um novo e envia o link, depois de gravar.
+  - `ConfirmEmailVerificationUseCase`: consome o token e marca o e-mail como verificado, na mesma transação.
+  - `ResendEmailVerificationUseCase`: reenvia o link sem revelar se o e-mail tem conta.
+- **Portas e contratos compartilhados:** `Hasher`, `VerificationTokenGenerator`, `EmailVerificationNotifier`, `Clock`, `Logger`, `UseCase` e `UnitOfWork`.
+- **Implementações in-memory** de `UserRepository`, `StudentRepository`, `EmailVerificationTokenRepository` e `UnitOfWork`. São usadas nos testes unitários e simulam as constraints `UNIQUE` do banco.
 
 **Persistência (PostgreSQL 17 + Prisma 7)**
 
@@ -248,10 +294,17 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 - **Repositórios** `PrismaUserRepository` e `PrismaStudentRepository`: o estudante é salvo junto com o perfil numa única operação. Violações de `UNIQUE` (erro `P2002`) viram `EmailAlreadyInUseError`, `CpfAlreadyInUseError` e `EnrollmentNumberAlreadyInUseError`.
 - **`PrismaUnitOfWork`:** as gravações feitas dentro de `unitOfWork.run()` usam a mesma transação (via `AsyncLocalStorage`). Se qualquer passo falhar, tudo é desfeito.
 - **`PrismaService` e `DatabaseModule`** globais. A aplicação se conecta ao banco na subida e falha logo se ele estiver fora do ar.
+- **Tokens de verificação:** tabela `email_verification_tokens` (hash único, exclusão em cascata com o usuário) e `PrismaEmailVerificationTokenRepository`.
 
-**Senhas**
+**Senhas e tokens**
 
 - **`Argon2Hasher`:** implementa a porta `Hasher` com Argon2id e os parâmetros mínimos do OWASP (19 MiB de memória, 2 iterações, paralelismo 1). O salt e os parâmetros ficam gravados no próprio hash.
+- **`CryptoVerificationTokenGenerator`:** token de 32 bytes aleatórios em base64url, guardado como hash SHA-256.
+
+**E-mail**
+
+- **`MailModule`** global com o `NodemailerMailSender`, que envia por SMTP. Em desenvolvimento, aponta para o Mailpit do Docker Compose.
+- **`MailEmailVerificationNotifier`:** monta o e-mail de verificação em texto e HTML, com o link para o front-end, a validade no horário de Maceió e o nome escapado no HTML.
 
 **API HTTP**
 
@@ -263,7 +316,8 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
   - `404` para registro não encontrado;
   - `401` para credenciais inválidas;
   - `422` para as demais regras de negócio, como CPF ou e-mail inválidos.
-- **`UserModule`:** liga cada contrato à sua implementação (Prisma, Argon2) e monta o caso de uso.
+- **`POST /email-verification/confirm` e `POST /email-verification/resend`:** confirmação e reenvio do link de verificação, com limite de requisições por IP (`@nestjs/throttler`).
+- **`UserModule`:** liga cada contrato à sua implementação (Prisma, Argon2, SMTP) e monta os casos de uso.
 
 **Módulo `property`: domínio, aplicação e persistência**
 
@@ -286,17 +340,20 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 - O perfil do estudante só pode ser criado ou alterado pelo `Student`, e campos extras vindos da requisição são descartados.
 - As entidades usam campos privados (`#`), então serializar uma entidade por engano não expõe senha nem CPF.
 - Dois cadastros simultâneos com o mesmo e-mail, CPF ou matrícula não geram duplicados nem deixam um usuário sem estudante: a constraint `UNIQUE` barra o segundo e a transação desfaz o que ele já tinha gravado.
+- O link de verificação de e-mail expira, só funciona uma vez e deixa de valer quando um novo é pedido.
 
 **Qualidade**
 
-- **89 testes unitários**, **23 de integração** (contra o PostgreSQL, no banco `morae_test`) e **13 end-to-end** (requisições HTTP reais), todos passando.
+- **148 testes unitários**, **31 de integração** (contra o PostgreSQL e o Mailpit) e **19 end-to-end** (requisições HTTP reais, incluindo o fluxo completo de verificação de e-mail), todos passando.
 - Typecheck (`strict`), lint e Prettier sem erros.
 - Revisão de segurança do módulo `user` feita e corrigida, cobrindo mass assignment, vazamento na serialização, validação de entrada e segredos fora do código.
 
 ### Pendente
 
-- **Autenticação:** login, JWT (access e refresh token), guards e rate limiting.
-- **Demais casos de uso do `user`:** cadastro de proprietário, consulta e edição de perfil, atualização dos dados acadêmicos, verificação de e-mail e suspensão de contas.
+- **Autenticação:** login, JWT (access e refresh token) e guards. Falta também decidir o que um e-mail ainda não verificado impede de fazer.
+- **Demais casos de uso do `user`:** cadastro de proprietário, consulta e edição de perfil, atualização dos dados acadêmicos e suspensão de contas.
+- **Provedor de e-mail em produção:** basta configurar o SMTP do provedor escolhido (Resend, Amazon SES, SendGrid...).
+- **IP real atrás de proxy:** em produção, o limite de requisições precisa do IP do cliente. Atrás de um proxy ou balanceador, é preciso configurar o `trust proxy` do Express.
 - **Verificação de vínculo com a UFAL** (módulo `verification`): envio de documentos e revisão pelo administrador.
 - **Formato da matrícula:** a regra do `EnrollmentNumber` é provisória (6 a 15 dígitos) até o padrão oficial da UFAL ser confirmado.
 - **Demais módulos:** `matching`, `interaction`, `contract` e `report` ainda têm só a estrutura de pastas e arquivos vazios.

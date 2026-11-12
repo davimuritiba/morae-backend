@@ -1,9 +1,11 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { PropertyModule } from './modules/property/property.module.js';
 import { UserModule } from './modules/user/user.module.js';
 import { DatabaseModule } from './shared/infra/database/database.module.js';
+import { MailModule } from './shared/infra/mail/mail.module.js';
 import { DomainErrorFilter } from './shared/presentation/filters/domain-error.filter.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -20,6 +22,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       serviceId: 'morae-backend',
     }),
     DatabaseModule,
+    MailModule,
+    // Limite padrão por IP; as rotas sensíveis definem limites próprios com
+    // @Throttle e só são limitadas onde o ThrottlerGuard é aplicado.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }]),
     UserModule,
     PropertyModule,
   ],

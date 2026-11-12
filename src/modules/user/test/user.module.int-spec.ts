@@ -1,16 +1,29 @@
 import { Test, type TestingModule } from '@nestjs/testing';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { resetDatabase } from '../../../../test/integration/reset-database.js';
+import { Clock } from '../../../shared/application/clock.js';
 import { UnitOfWork } from '../../../shared/application/unit-of-work.js';
 import { DatabaseModule } from '../../../shared/infra/database/database.module.js';
 import { PrismaUnitOfWork } from '../../../shared/infra/database/prisma-unit-of-work.js';
 import { PrismaService } from '../../../shared/infra/database/prisma.service.js';
+import { MailModule } from '../../../shared/infra/mail/mail.module.js';
+import { SystemClock } from '../../../shared/infra/system-clock.js';
+import { EmailVerificationNotifier } from '../application/ports/email-verification-notifier.port.js';
 import { Hasher } from '../application/ports/hasher.port.js';
+import { VerificationTokenGenerator } from '../application/ports/verification-token-generator.port.js';
+import { ConfirmEmailVerificationUseCase } from '../application/use-cases/confirm-email-verification/confirm-email-verification.use-case.js';
 import { RegisterStudentUseCase } from '../application/use-cases/register-student/register-student.use-case.js';
+import { ResendEmailVerificationUseCase } from '../application/use-cases/resend-email-verification/resend-email-verification.use-case.js';
+import { SendEmailVerificationUseCase } from '../application/use-cases/send-email-verification/send-email-verification.use-case.js';
+import { EmailVerificationTokenRepository } from '../domain/repositories/email-verification-token.repository.js';
 import { StudentRepository } from '../domain/repositories/student.repository.js';
 import { UserRepository } from '../domain/repositories/user.repository.js';
+import { PrismaEmailVerificationTokenRepository } from '../infra/persistence/repositories/prisma-email-verification-token.repository.js';
 import { PrismaStudentRepository } from '../infra/persistence/repositories/prisma-student.repository.js';
 import { PrismaUserRepository } from '../infra/persistence/repositories/prisma-user.repository.js';
 import { Argon2Hasher } from '../infra/services/argon2-hasher.js';
+import { CryptoVerificationTokenGenerator } from '../infra/services/crypto-verification-token-generator.js';
+import { MailEmailVerificationNotifier } from '../infra/services/mail-email-verification-notifier.js';
 import { UserModule } from '../user.module.js';
 
 describe('UserModule (integração)', () => {
@@ -19,7 +32,13 @@ describe('UserModule (integração)', () => {
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
-      imports: [DatabaseModule, UserModule],
+      // Os mesmos módulos globais que o AppModule fornece ao UserModule.
+      imports: [
+        DatabaseModule,
+        MailModule,
+        ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
+        UserModule,
+      ],
     }).compile();
     await moduleRef.init();
     prisma = moduleRef.get(PrismaService);
@@ -40,9 +59,24 @@ describe('UserModule (integração)', () => {
     );
     expect(moduleRef.get(Hasher)).toBeInstanceOf(Argon2Hasher);
     expect(moduleRef.get(UnitOfWork)).toBeInstanceOf(PrismaUnitOfWork);
-    expect(moduleRef.get(RegisterStudentUseCase)).toBeInstanceOf(
-      RegisterStudentUseCase,
+    expect(moduleRef.get(EmailVerificationTokenRepository)).toBeInstanceOf(
+      PrismaEmailVerificationTokenRepository,
     );
+    expect(moduleRef.get(VerificationTokenGenerator)).toBeInstanceOf(
+      CryptoVerificationTokenGenerator,
+    );
+    expect(moduleRef.get(EmailVerificationNotifier)).toBeInstanceOf(
+      MailEmailVerificationNotifier,
+    );
+    expect(moduleRef.get(Clock)).toBeInstanceOf(SystemClock);
+    for (const useCase of [
+      RegisterStudentUseCase,
+      SendEmailVerificationUseCase,
+      ConfirmEmailVerificationUseCase,
+      ResendEmailVerificationUseCase,
+    ]) {
+      expect(moduleRef.get(useCase)).toBeInstanceOf(useCase);
+    }
   });
 
   it('cadastra um estudante com as dependências reais', async () => {
