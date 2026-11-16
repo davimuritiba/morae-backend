@@ -3,6 +3,7 @@ import type { Cpf } from '../value-objects/cpf.vo.js';
 import type { Email } from '../value-objects/email.vo.js';
 
 export abstract class UserRepository {
+  abstract findAll(): Promise<User[]>;
   abstract findById(id: string): Promise<User | null>;
   abstract findByEmail(email: Email): Promise<User | null>;
   // Separados para o caso de uso saber qual erro lançar.
