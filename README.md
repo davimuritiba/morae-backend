@@ -112,6 +112,32 @@ npm run start:prod
 
 ## Endpoints
 
+### `POST /auth/login`
+
+Autentica um usuário ativo. O endpoint valida as credenciais, mas ainda não emite token; a resposta contém somente dados públicos da conta.
+
+Corpo da requisição:
+
+```json
+{
+  "email": "maria@ufal.br",
+  "password": "senha-segura-123"
+}
+```
+
+Resposta `201 Created`:
+
+```json
+{
+  "userId": "0b6f3c1e-8f2a-4c1d-9a51-3f1f2c7d9e10",
+  "name": "Maria Silva",
+  "email": "maria@ufal.br",
+  "status": "ACTIVE"
+}
+```
+
+Credenciais incorretas ou conta suspensa/desativada respondem `401` com `INVALID_CREDENTIALS`.
+
 ### `POST /students`
 
 Cadastra um estudante, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`.
@@ -295,7 +321,7 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 
 ### Pendente
 
-- **Autenticação:** login, JWT (access e refresh token), guards e rate limiting.
+- **Autenticação:** emissão de JWT (access e refresh token), guards e rate limiting.
 - **Demais casos de uso do `user`:** cadastro de proprietário, consulta e edição de perfil, atualização dos dados acadêmicos, verificação de e-mail e suspensão de contas.
 - **Verificação de vínculo com a UFAL** (módulo `verification`): envio de documentos e revisão pelo administrador.
 - **Formato da matrícula:** a regra do `EnrollmentNumber` é provisória (6 a 15 dígitos) até o padrão oficial da UFAL ser confirmado.
