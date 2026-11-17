@@ -168,6 +168,30 @@ Resposta `201 Created`:
 
 Credenciais incorretas ou conta suspensa/desativada respondem `401` com `INVALID_CREDENTIALS`.
 
+### `POST /auth/admin/login`
+
+Autentica um administrador pelas credenciais próprias cadastradas no registro `Administrator`.
+
+Corpo da requisição:
+
+```json
+{
+  "login": "admin",
+  "password": "Admin@123"
+}
+```
+
+Resposta `201 Created`:
+
+```json
+{
+  "administratorId": "77777777-7777-4777-8777-777777777777",
+  "userId": "55555555-5555-4555-8555-555555555555",
+  "login": "admin",
+  "permissions": []
+}
+```
+
 ### `POST /students`
 
 Cadastra um estudante, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`, e um link de verificação é enviado para o e-mail informado. Se o envio do e-mail falhar, o cadastro continua valendo: o erro vai para o log e o usuário pode pedir o reenvio.
