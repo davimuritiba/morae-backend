@@ -112,6 +112,26 @@ npm run start:prod
 
 ## Endpoints
 
+### `GET /users/:id`
+
+Consulta os dados públicos de um usuário pelo UUID.
+
+Resposta `200 OK`:
+
+```json
+{
+  "userId": "0b6f3c1e-8f2a-4c1d-9a51-3f1f2c7d9e10",
+  "name": "Maria Silva",
+  "email": "maria@ufal.br",
+  "phone": "82999991234",
+  "photoUrl": null,
+  "emailVerified": false,
+  "status": "ACTIVE"
+}
+```
+
+Se o usuário não existir, a API responde `404` com `USER_NOT_FOUND`.
+
 ### `POST /auth/login`
 
 Autentica um usuário ativo. O endpoint valida as credenciais, mas ainda não emite token; a resposta contém somente dados públicos da conta.
