@@ -22,6 +22,13 @@ export class PrismaUserRepository extends UserRepository {
     super();
   }
 
+  async findAll(): Promise<User[]> {
+    const rows = await this.db.client.user.findMany({
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((row) => UserMapper.toDomain(row));
+  }
+
   async findById(id: string): Promise<User | null> {
     if (!isUuid(id)) return null;
 

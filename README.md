@@ -122,6 +122,52 @@ npm run start:prod
 
 ## Endpoints
 
+### `GET /users/:id`
+
+Consulta os dados públicos de um usuário pelo UUID.
+
+Resposta `200 OK`:
+
+```json
+{
+  "userId": "0b6f3c1e-8f2a-4c1d-9a51-3f1f2c7d9e10",
+  "name": "Maria Silva",
+  "email": "maria@ufal.br",
+  "phone": "82999991234",
+  "photoUrl": null,
+  "emailVerified": false,
+  "status": "ACTIVE"
+}
+```
+
+Se o usuário não existir, a API responde `404` com `USER_NOT_FOUND`.
+
+### `POST /auth/login`
+
+Autentica um usuário ativo. O endpoint valida as credenciais, mas ainda não emite token; a resposta contém somente dados públicos da conta.
+
+Corpo da requisição:
+
+```json
+{
+  "email": "maria@ufal.br",
+  "password": "senha-segura-123"
+}
+```
+
+Resposta `201 Created`:
+
+```json
+{
+  "userId": "0b6f3c1e-8f2a-4c1d-9a51-3f1f2c7d9e10",
+  "name": "Maria Silva",
+  "email": "maria@ufal.br",
+  "status": "ACTIVE"
+}
+```
+
+Credenciais incorretas ou conta suspensa/desativada respondem `401` com `INVALID_CREDENTIALS`.
+
 ### `POST /students`
 
 Cadastra um estudante, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`, e um link de verificação é enviado para o e-mail informado. Se o envio do e-mail falhar, o cadastro continua valendo: o erro vai para o log e o usuário pode pedir o reenvio.
@@ -350,8 +396,8 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 
 ### Pendente
 
-- **Autenticação:** login, JWT (access e refresh token) e guards. Falta também decidir o que um e-mail ainda não verificado impede de fazer.
-- **Demais casos de uso do `user`:** cadastro de proprietário, consulta e edição de perfil, atualização dos dados acadêmicos e suspensão de contas.
+- **Autenticação:** o `POST /auth/login` já confere as credenciais, mas ainda falta emitir JWT (access e refresh token), criar os guards e limitar as tentativas de login. Falta também decidir o que um e-mail ainda não verificado impede de fazer.
+- **Demais casos de uso do `user`:** cadastro de proprietário, edição de perfil, atualização dos dados acadêmicos e suspensão de contas.
 - **Provedor de e-mail em produção:** basta configurar o SMTP do provedor escolhido (Resend, Amazon SES, SendGrid...).
 - **IP real atrás de proxy:** em produção, o limite de requisições precisa do IP do cliente. Atrás de um proxy ou balanceador, é preciso configurar o `trust proxy` do Express.
 - **Verificação de vínculo com a UFAL** (módulo `verification`): envio de documentos e revisão pelo administrador.
@@ -361,6 +407,6 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 ### Próximos passos sugeridos
 
 1. Cadastro de proprietário: caso de uso `RegisterPropertyOwner` e rota `POST /property-owners`, no mesmo padrão do cadastro de estudante.
-2. Autenticação: caso de uso `Authenticate` (login), porta de token com JWT, tabela de refresh tokens, guards e rate limiting.
+2. Autenticação: completar o login com a emissão de JWT, tabela de refresh tokens, guards e limite de tentativas.
 3. Casos de uso de perfil, que exigem login: consultar o próprio perfil, definir o perfil de convivência e atualizar os dados acadêmicos.
 4. Módulo `verification`: envio e revisão dos documentos de vínculo.

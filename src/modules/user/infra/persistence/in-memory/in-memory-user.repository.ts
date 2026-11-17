@@ -9,6 +9,10 @@ export class InMemoryUserRepository extends UserRepository {
   // Público para os testes inspecionarem o que foi salvo.
   readonly items: User[] = [];
 
+  findAll(): Promise<User[]> {
+    return Promise.resolve([...this.items]);
+  }
+
   findById(id: string): Promise<User | null> {
     return Promise.resolve(this.items.find((u) => u.id === id) ?? null);
   }
