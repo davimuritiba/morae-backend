@@ -7,6 +7,7 @@ import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { Argon2Hasher } from '../src/modules/user/infra/services/argon2-hasher.js';
 import { PrismaService } from '../src/shared/infra/database/prisma.service.js';
+import { validCpf } from './helpers/valid-cpf.js';
 import { resetDatabase } from './integration/reset-database.js';
 
 const PASSWORD = 'senha-segura-123';
@@ -14,24 +15,6 @@ const PASSWORD = 'senha-segura-123';
 interface TestUser {
   id: string;
   token: string;
-}
-
-function validCpf(seed: number): string {
-  const base = String(100_000_000 + seed)
-    .slice(-9)
-    .split('')
-    .map(Number);
-  const digit = (digits: number[]) => {
-    const sum = digits.reduce(
-      (acc, d, i) => acc + d * (digits.length + 1 - i),
-      0,
-    );
-    const rest = (sum * 10) % 11;
-    return rest === 10 ? 0 : rest;
-  };
-  const first = digit(base);
-  const second = digit([...base, first]);
-  return [...base, first, second].join('');
 }
 
 describe('Chat (e2e)', () => {

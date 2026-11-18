@@ -122,11 +122,11 @@ npm run start:prod
 
 ## Endpoints
 
-### `GET /users/:id`
+### `GET /users/me` e `GET /users/:id`
 
-Consulta os dados públicos de um usuário pelo UUID.
+Exigem `Authorization: Bearer <accessToken>`; sem token, `401`.
 
-Resposta `200 OK`:
+`GET /users/me`, ou `GET /users/:id` com o próprio id, devolve os dados completos:
 
 ```json
 {
@@ -137,6 +137,16 @@ Resposta `200 OK`:
   "photoUrl": null,
   "emailVerified": false,
   "status": "ACTIVE"
+}
+```
+
+`GET /users/:id` de outra pessoa devolve só o perfil público:
+
+```json
+{
+  "userId": "7a1c2e9d-4b3f-4e8a-9c2d-1f0e3b4a5c6d",
+  "name": "Bruno Costa",
+  "photoUrl": null
 }
 ```
 
@@ -169,6 +179,8 @@ Resposta `201 Created`:
 ```
 
 Credenciais incorretas ou conta suspensa/desativada respondem `401` com `INVALID_CREDENTIALS`.
+
+Cada conta aceita até 10 tentativas a cada 15 minutos por IP; depois disso, a API responde `429`. O limite também vale para `POST /auth/admin/login`. Como a contagem é por conta e IP, alunos na mesma rede da UFAL não bloqueiam uns aos outros.
 
 ### `POST /auth/admin/login`
 
