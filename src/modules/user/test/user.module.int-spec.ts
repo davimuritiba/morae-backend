@@ -3,6 +3,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { resetDatabase } from '../../../../test/integration/reset-database.js';
 import { Clock } from '../../../shared/application/clock.js';
 import { UnitOfWork } from '../../../shared/application/unit-of-work.js';
+import { AuthModule } from '../../../shared/infra/auth/auth.module.js';
 import { DatabaseModule } from '../../../shared/infra/database/database.module.js';
 import { PrismaUnitOfWork } from '../../../shared/infra/database/prisma-unit-of-work.js';
 import { PrismaService } from '../../../shared/infra/database/prisma.service.js';
@@ -36,6 +37,7 @@ describe('UserModule (integração)', () => {
       imports: [
         DatabaseModule,
         MailModule,
+        AuthModule,
         ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
         UserModule,
       ],

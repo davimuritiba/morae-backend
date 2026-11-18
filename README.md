@@ -102,7 +102,7 @@ Não edite uma migration que já foi aplicada. Para corrigir algo, crie uma nova
 
 ## Executando
 
-O `.env` é carregado automaticamente pelo `src/main.ts`. Na subida, a aplicação se conecta ao banco e falha logo se ele estiver fora do ar ou se faltar alguma variável obrigatória (`DATABASE_URL`, as de SMTP, `MAIL_FROM` ou `APP_WEB_URL`).
+O `.env` é carregado automaticamente pelo `src/main.ts`. Na subida, a aplicação se conecta ao banco e falha logo se ele estiver fora do ar ou se faltar alguma variável obrigatória (`DATABASE_URL`, as de SMTP, `MAIL_FROM`, `APP_WEB_URL` ou `JWT_SECRET`).
 
 Desenvolvimento, com recarga automática:
 
@@ -144,7 +144,7 @@ Se o usuário não existir, a API responde `404` com `USER_NOT_FOUND`.
 
 ### `POST /auth/login`
 
-Autentica um usuário ativo. O endpoint valida as credenciais, mas ainda não emite token; a resposta contém somente dados públicos da conta.
+Autentica um usuário ativo e emite um token de acesso (JWT), válido por `JWT_EXPIRES_IN_MINUTES` (60 por padrão). Envie-o no header `Authorization: Bearer <accessToken>` das rotas protegidas.
 
 Corpo da requisição:
 
@@ -162,7 +162,9 @@ Resposta `201 Created`:
   "userId": "0b6f3c1e-8f2a-4c1d-9a51-3f1f2c7d9e10",
   "name": "Maria Silva",
   "email": "maria@ufal.br",
-  "status": "ACTIVE"
+  "status": "ACTIVE",
+  "accessToken": "eyJhbGciOi...",
+  "tokenType": "Bearer"
 }
 ```
 
@@ -235,6 +237,66 @@ Envia um novo link de verificação. Os links anteriores deixam de funcionar.
 ```
 
 Responde **sempre `202 Accepted`**, sem corpo, exista ou não uma conta com esse e-mail, e o envio acontece em segundo plano. Assim, nem a resposta nem o tempo dela revelam quais e-mails estão cadastrados. Contas já verificadas, suspensas ou desativadas não recebem e-mail. O limite é de **3 pedidos a cada 15 minutos por IP** (depois disso, `429`).
+
+## Chat
+
+Todas as rotas exigem o header `Authorization: Bearer <accessToken>` (obtido em `POST /auth/login`). Sem token ou com token inválido: `401`. Só usuários com **e-mail verificado** e conta ativa usam o chat.
+
+| Método | Rota                       | O que faz                                                                  | Sucesso         |
+| ------ | -------------------------- | -------------------------------------------------------------------------- | --------------- |
+| POST   | `/chats/direct`            | Abre (ou devolve) a conversa 1:1 com `targetUserId` **ou** com o dono do `listingId` | `201` nova, `200` existente |
+| POST   | `/chats/groups`            | Cria grupo: `{ "name": "...", "memberIds": ["uuid", ...] }` (3 a 50 pessoas contando quem cria) | `201` |
+| GET    | `/chats?limit=&cursor=`    | Minhas conversas, da atividade mais recente para a mais antiga             | `200`           |
+| GET    | `/chats/:chatId`           | Uma conversa                                                               | `200`           |
+| GET    | `/chats/:chatId/messages?limit=&cursor=` | Histórico, da mensagem mais recente para a mais antiga       | `200`           |
+| POST   | `/chats/:chatId/messages`  | Envia `{ "content": "...", "listingId": "uuid" }` (texto, anúncio ou os dois) | `201`        |
+| POST   | `/chats/:chatId/read`      | Marca a conversa como lida                                                 | `204`           |
+
+Conversa (`ChatResponse`):
+
+```json
+{
+  "id": "uuid",
+  "type": "DIRECT",
+  "name": null,
+  "participants": [
+    { "userId": "uuid", "name": "Ana", "photoUrl": null, "role": "MEMBER", "lastReadAt": "2026-11-17T10:05:00.000Z" }
+  ],
+  "lastMessage": { "id": "uuid", "chatId": "uuid", "senderId": "uuid", "content": "Oi!", "listingId": null, "createdAt": "2026-11-17T10:04:00.000Z" },
+  "unreadCount": 2,
+  "lastActivityAt": "2026-11-17T10:04:00.000Z",
+  "createdAt": "2026-11-17T09:00:00.000Z"
+}
+```
+
+As listagens respondem `{ "data": [...], "nextCursor": "..." }`. Para a próxima página, repita a requisição com `cursor=<nextCursor>`; `nextCursor` `null` indica o fim. `limit` vai de 1 a 100 (padrão 30). Membros novos de um grupo só veem as mensagens enviadas depois de entrarem.
+
+Erros:
+
+| Status | `code`                                   | Quando                                                                 |
+| ------ | ---------------------------------------- | ---------------------------------------------------------------------- |
+| `400`  | —                                        | Corpo inválido, `targetUserId` e `listingId` juntos ou nenhum, `cursor` inválido |
+| `403`  | `EMAIL_NOT_VERIFIED`, `CHAT_ACCESS_DENIED` | E-mail não verificado; conta inexistente ou inativa                  |
+| `404`  | `CHAT_NOT_FOUND`                         | A conversa não existe **ou** o usuário não participa dela              |
+| `404`  | `LISTING_NOT_FOUND`                      | Anúncio inexistente ou não aprovado                                    |
+| `422`  | `CANNOT_CHAT_WITH_YOURSELF`              | Conversa consigo mesmo, inclusive pelo próprio anúncio                 |
+| `422`  | `CHAT_USER_UNAVAILABLE`                  | Destinatário ou membro inexistente, inativo ou sem e-mail verificado   |
+| `422`  | `EMPTY_MESSAGE`, `INVALID_MESSAGE_CONTENT` | Sem texto e sem anúncio; texto com mais de 2000 caracteres           |
+| `422`  | `INVALID_GROUP_NAME`, `INVALID_GROUP_SIZE` | Nome vazio ou com mais de 60 caracteres; grupo fora de 3 a 50 pessoas |
+
+### Tempo real (Socket.IO)
+
+Conecte no namespace `/chat` com o mesmo token:
+
+```js
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000/chat', { auth: { token: accessToken } });
+socket.on('message:new', (message) => { /* MessageResponse */ });
+socket.on('chat:read', ({ chatId, userId, readAt }) => { /* alguém leu */ });
+```
+
+Token inválido: o servidor desconecta o socket. O envio de mensagens continua pelo `POST /chats/:chatId/messages`; o socket só entrega os eventos para os outros participantes (quem enviou já recebe a mensagem na resposta HTTP).
 
 ## Testes
 
