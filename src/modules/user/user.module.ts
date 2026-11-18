@@ -12,6 +12,7 @@ import { VerificationTokenGenerator } from './application/ports/verification-tok
 import { ConfirmEmailVerificationUseCase } from './application/use-cases/confirm-email-verification/confirm-email-verification.use-case.js';
 import { GetUserByIdUseCase } from './application/use-cases/get-user-by-id/get-user-by-id.use-case.js';
 import { LoginUseCase } from './application/use-cases/login/login.use-case.js';
+import { LoginAdministratorUseCase } from './application/use-cases/login-administrator/login-administrator.use-case.js';
 import { RegisterStudentUseCase } from './application/use-cases/register-student/register-student.use-case.js';
 import { ResendEmailVerificationUseCase } from './application/use-cases/resend-email-verification/resend-email-verification.use-case.js';
 import { SendEmailVerificationUseCase } from './application/use-cases/send-email-verification/send-email-verification.use-case.js';
@@ -19,8 +20,10 @@ import { EmailVerificationTokenRepository } from './domain/repositories/email-ve
 import { StudentRepository } from './domain/repositories/student.repository.js';
 import { UserRepository } from './domain/repositories/user.repository.js';
 import { PrismaEmailVerificationTokenRepository } from './infra/persistence/repositories/prisma-email-verification-token.repository.js';
+import { AdministratorRepository } from './domain/repositories/administrator.repository.js';
 import { PrismaStudentRepository } from './infra/persistence/repositories/prisma-student.repository.js';
 import { PrismaUserRepository } from './infra/persistence/repositories/prisma-user.repository.js';
+import { PrismaAdministratorRepository } from './infra/persistence/repositories/prisma-administrator.repository.js';
 import { Argon2Hasher } from './infra/services/argon2-hasher.js';
 import { CryptoVerificationTokenGenerator } from './infra/services/crypto-verification-token-generator.js';
 import { MailEmailVerificationNotifier } from './infra/services/mail-email-verification-notifier.js';
@@ -28,7 +31,6 @@ import { AuthController } from './presentation/http/controllers/auth.controller.
 import { EmailVerificationController } from './presentation/http/controllers/email-verification.controller.js';
 import { StudentsController } from './presentation/http/controllers/students.controller.js';
 import { UsersController } from './presentation/http/controllers/users.controller.js';
-
 const HOUR_MS = 60 * 60 * 1000;
 
 // Composition root do contexto user: é o único lugar que liga os contratos
@@ -48,6 +50,9 @@ const HOUR_MS = 60 * 60 * 1000;
     {
       provide: EmailVerificationTokenRepository,
       useClass: PrismaEmailVerificationTokenRepository,
+    },{
+      provide: AdministratorRepository,
+      useClass: PrismaAdministratorRepository,
     },
     { provide: Hasher, useClass: Argon2Hasher },
     {
@@ -167,6 +172,16 @@ const HOUR_MS = 60 * 60 * 1000;
       provide: GetUserByIdUseCase,
       useFactory: (users: UserRepository) => new GetUserByIdUseCase(users),
       inject: [UserRepository],
+    },
+    {
+      provide: LoginAdministratorUseCase,
+      useFactory: (
+        administrators: AdministratorRepository,
+        users: UserRepository,
+        hasher: Hasher,
+      ) =>
+        new LoginAdministratorUseCase(administrators, users, hasher),
+      inject: [AdministratorRepository, UserRepository, Hasher],
     },
   ],
 })

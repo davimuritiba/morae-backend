@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import * as argon2 from 'argon2';
 import pg from 'pg';
 
 const { Pool } = pg;
@@ -10,19 +11,25 @@ if (!connectionString) {
 
 const pool = new Pool({ connectionString });
 const timestamp = '2026-11-06T17:00:00.000Z';
-const passwordHash = '$argon2id$v=19$m=65536,t=3,p=4$seed$hypothetical-password';
+const adminPasswordHash = await argon2.hash('Admin@123');
+const passwordHash = await argon2.hash('senha-segura-123');
 
 const users = [
   ['11111111-1111-4111-8111-111111111111', 'Mariana Albuquerque', 'mariana.albuquerque@example.com', '52998224725', '82999990001'],
   ['22222222-2222-4222-8222-222222222222', 'Ana Beatriz Lima', 'ana.lima@example.com', '11144477735', '82999990002'],
   ['33333333-3333-4333-8333-333333333333', 'Lucas Henrique Santos', 'lucas.santos@example.com', '16899535009', '82999990003'],
   ['44444444-4444-4444-8444-444444444444', 'Sofia Carvalho Mendes', 'sofia.mendes@example.com', '93541134780', '82999990004'],
+  ['55555555-5555-4555-8555-555555555555', 'Admin', 'Admin@Morae.com', '12345678901', '82999990005'],
 ];
 
 const students = [
   ['bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', users[1][0], '202610001', 'Arquitetura e Urbanismo', 5, '2028-12-15', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'Organizada, tranquila e cuidadosa com os espaços comuns.', 1800, 500, 900, false, 2, 2, { MONDAY: [{ start: '08:00', end: '18:00' }] }],
   ['dddddddd-dddd-4ddd-8ddd-dddddddddddd', users[2][0], '202610002', 'Engenharia Civil', 7, '2027-12-15', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'Sociável, responsável e interessado em dividir tarefas.', 2200, 550, 950, false, 3, 3, { TUESDAY: [{ start: '08:00', end: '18:00' }] }],
   ['ffffffff-ffff-4fff-8fff-ffffffffffff', users[3][0], '202610003', 'Medicina', 3, '2030-12-15', '99999999-9999-4999-8999-999999999999', 'Estudiosa, não fumante e comprometida com uma boa convivência.', 2500, 600, 1000, false, 1, 2, { WEDNESDAY: [{ start: '08:00', end: '20:00' }] }],
+];
+
+const admins = [
+  ['77777777-7777-4777-8777-777777777777', users[4][0], 'admin', adminPasswordHash],
 ];
 
 async function main() {
@@ -83,12 +90,23 @@ async function main() {
       ['88888888-8888-4888-8888-888888888888', '77777777-7777-4777-8777-777777777777', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', ['Wi-Fi', 'Área de estudos', 'Lavanderia'], timestamp],
     );
 
-    for (const user of users.slice(1)) {
+    for (const user of users.slice(1, 4)) {
       await client.query(
         `INSERT INTO property_cohabitants (property_id, user_id, created_at)
          VALUES ($1, $2, $3)
          ON CONFLICT (property_id, user_id) DO NOTHING`,
         ['88888888-8888-4888-8888-888888888888', user[0], timestamp],
+      );
+    }
+
+    for (const admin of admins) {
+      await client.query(
+        `INSERT INTO administrators (id, user_id, login, password_hash, permissions, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, ARRAY['VERIFY_DOCUMENTS','MODERATE_LISTINGS','MANAGE_USERS','VIEW_REPORTS']::"Permission"[], $5, $5)
+         ON CONFLICT (id) DO UPDATE SET user_id = EXCLUDED.user_id, login = EXCLUDED.login,
+           password_hash = EXCLUDED.password_hash, permissions = EXCLUDED.permissions,
+           updated_at = EXCLUDED.updated_at`,
+        [admin[0], admin[1], admin[2], admin[3], timestamp],
       );
     }
 
