@@ -6,9 +6,13 @@ import { PropertyController } from './presentation/http/controllers/property.con
 
 @Module({
   providers: [
-    PublishPropertyUseCase,
-    PrismaPropertyRepository,
-    { provide: PropertyRepository, useExisting: PrismaPropertyRepository },
+    { provide: PropertyRepository, useClass: PrismaPropertyRepository },
+    {
+      provide: PublishPropertyUseCase,
+      useFactory: (properties: PropertyRepository) =>
+        new PublishPropertyUseCase(properties),
+      inject: [PropertyRepository],
+    },
   ],
   controllers: [PropertyController],
   exports: [PublishPropertyUseCase, PropertyRepository],
