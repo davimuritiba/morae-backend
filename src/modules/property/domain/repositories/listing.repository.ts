@@ -14,6 +14,7 @@ export interface ListingSearchResult {
   parkingSpaces: number;
   amenities: string[];
   location: { city: string; neighborhood: string; state: string };
+  advertiser: { userId: string; name: string };
   media: { type: MediaType; url: string; position: number }[];
   createdAt: Date;
 }
@@ -24,4 +25,5 @@ export interface SearchListingsFilter {
 
 export abstract class ListingRepository {
   abstract search(filter: SearchListingsFilter): Promise<ListingSearchResult[]>;
+  abstract findApprovedById(listingId: string): Promise<ListingSearchResult | null>;
 }

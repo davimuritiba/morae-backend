@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ListingStatus } from '../../../../../shared/infra/database/generated/prisma/client.js';
+import type { Prisma } from '../../../../../shared/infra/database/generated/prisma/client.js';
 import { PrismaService } from '../../../../../shared/infra/database/prisma.service.js';
 import { HousingType } from '../../../domain/enums/housing-type.enum.js';
 import { MediaType } from '../../../domain/enums/media-type.enum.js';
@@ -8,6 +9,20 @@ import type {
   ListingSearchResult,
   SearchListingsFilter,
 } from '../../../domain/repositories/listing.repository.js';
+
+const listingSearchInclude = {
+  property: {
+    include: {
+      residence: true,
+      owner: { include: { user: { select: { id: true, name: true } } } },
+    },
+  },
+  media: { orderBy: { position: 'asc' } },
+} satisfies Prisma.ListingInclude;
+
+type ListingWithSearchDetails = Prisma.ListingGetPayload<{
+  include: typeof listingSearchInclude;
+}>;
 
 @Injectable()
 export class PrismaListingRepository extends ListingRepository {
@@ -38,14 +53,23 @@ export class PrismaListingRepository extends ListingRepository {
             }
           : {}),
       },
-      include: {
-        property: { include: { residence: true } },
-        media: { orderBy: { position: 'asc' } },
-      },
+      include: listingSearchInclude,
       orderBy: { createdAt: 'desc' },
     });
 
-    return rows.map((row) => ({
+    return rows.map((row) => this.toSearchResult(row));
+  }
+
+  async findApprovedById(listingId: string): Promise<ListingSearchResult | null> {
+    const row = await this.prisma.listing.findFirst({
+      where: { id: listingId, status: ListingStatus.APPROVED },
+      include: listingSearchInclude,
+    });
+    return row ? this.toSearchResult(row) : null;
+  }
+
+  private toSearchResult(row: ListingWithSearchDetails): ListingSearchResult {
+    return {
       listingId: row.id,
       propertyId: row.propertyId,
       title: row.title,
@@ -62,12 +86,16 @@ export class PrismaListingRepository extends ListingRepository {
         neighborhood: row.property.residence.neighborhood,
         state: row.property.residence.state,
       },
+      advertiser: {
+        userId: row.property.owner.user.id,
+        name: row.property.owner.user.name,
+      },
       media: row.media.map((item) => ({
         type: item.type as MediaType,
         url: item.url,
         position: item.position,
       })),
       createdAt: row.createdAt,
-    }));
+    };
   }
 }
