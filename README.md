@@ -122,6 +122,18 @@ npm run start:prod
 
 ## Endpoints
 
+### `GET /favorites`
+
+Exige `Authorization: Bearer <accessToken>`. Lista os anúncios aprovados que o usuário autenticado salvou, mais recentes primeiro. O retorno contém `{ "items": [...] }`, com `listingId`, `propertyId`, dados de preço e características do imóvel, `location`, `media` e `favoritedAt`.
+
+### `PUT /favorites/:listingId`
+
+Exige autenticação e adiciona o anúncio aprovado aos favoritos do usuário. A operação é idempotente: repetir a chamada não cria duplicatas. Retorna `200 OK` com `{ "listingId": "...", "createdAt": "..." }`. Anúncios inexistentes ou não aprovados retornam `404 LISTING_NOT_FOUND`.
+
+### `DELETE /favorites/:listingId`
+
+Exige autenticação e remove o favorito do usuário autenticado. Retorna `204 No Content`; remover um anúncio que não está salvo não gera erro. Um UUID inválido retorna `400`.
+
 ### `GET /properties?location=<termo>`
 
 Lista anúncios aprovados. O parâmetro `location` é opcional e procura, sem diferenciar maiúsculas e minúsculas, por cidade, bairro ou estado. Sem o parâmetro, retorna todos os anúncios aprovados.

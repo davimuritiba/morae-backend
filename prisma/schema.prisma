@@ -106,6 +106,7 @@ model User {
   createdChats            Chat[]
   chatParticipations      ChatParticipant[]
   sentMessages            Message[]
+  favorites               Favorite[]
 
   @@map("users")
 }
@@ -260,9 +261,10 @@ model Listing {
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime      @map("updated_at") @db.Timestamptz(3)
 
-  property Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  media    ListingMedia[]
-  messages Message[]
+  property  Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  media     ListingMedia[]
+  messages  Message[]
+  favorites Favorite[]
 
   @@index([propertyId])
   @@index([status])
@@ -282,6 +284,19 @@ model ListingMedia {
   @@unique([listingId, position])
   @@index([listingId])
   @@map("listing_media")
+}
+
+model Favorite {
+  userId    String   @map("user_id") @db.Uuid
+  listingId String   @map("listing_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([listingId])
+  @@map("favorites")
 }
 
 // ─── Módulo interaction: chat ───────────────────────────────────────────────
