@@ -103,6 +103,7 @@ model User {
   administrator           Administrator?
   propertyCohabitancies   PropertyCohabitant[]
   emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens    PasswordResetToken[]
 
   @@map("users")
 }
