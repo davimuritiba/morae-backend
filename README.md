@@ -142,6 +142,14 @@ Resposta `200 OK`:
 
 Se o usuário não existir, a API responde `404` com `USER_NOT_FOUND`.
 
+### `PATCH /users/me`
+
+Atualiza os dados básicos da conta autenticada. Requer `Authorization: Bearer <accessToken>`.
+Aceita um ou mais campos: `name`, `email`, `cpf` e `phone` (que pode ser `null` para remover o telefone).
+Senha e estado da conta não são editáveis por esta rota. O CPF não é devolvido na resposta.
+Quando o e-mail muda, ele volta para `emailVerified: false` e a API envia um novo link de verificação.
+Duplicidades de e-mail/CPF respondem `409`; formatos inválidos respondem `422`; corpo vazio responde `422`.
+
 ### `POST /auth/login`
 
 Autentica um usuário ativo e emite um token de acesso (JWT), válido por `JWT_EXPIRES_IN_MINUTES` (60 por padrão). Envie-o no header `Authorization: Bearer <accessToken>` das rotas protegidas.

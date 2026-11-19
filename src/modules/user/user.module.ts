@@ -11,6 +11,7 @@ import { Hasher } from './application/ports/hasher.port.js';
 import { VerificationTokenGenerator } from './application/ports/verification-token-generator.port.js';
 import { ConfirmEmailVerificationUseCase } from './application/use-cases/confirm-email-verification/confirm-email-verification.use-case.js';
 import { GetUserByIdUseCase } from './application/use-cases/get-user-by-id/get-user-by-id.use-case.js';
+import { UpdateUserProfileUseCase } from './application/use-cases/update-user-profile/update-user-profile.use-case.js';
 import { LoginUseCase } from './application/use-cases/login/login.use-case.js';
 import { LoginAdministratorUseCase } from './application/use-cases/login-administrator/login-administrator.use-case.js';
 import { RegisterStudentUseCase } from './application/use-cases/register-student/register-student.use-case.js';
@@ -50,7 +51,8 @@ const HOUR_MS = 60 * 60 * 1000;
     {
       provide: EmailVerificationTokenRepository,
       useClass: PrismaEmailVerificationTokenRepository,
-    },{
+    },
+    {
       provide: AdministratorRepository,
       useClass: PrismaAdministratorRepository,
     },
@@ -174,13 +176,21 @@ const HOUR_MS = 60 * 60 * 1000;
       inject: [UserRepository],
     },
     {
+      provide: UpdateUserProfileUseCase,
+      useFactory: (
+        users: UserRepository,
+        sendEmailVerification: SendEmailVerificationUseCase,
+        logger: Logger,
+      ) => new UpdateUserProfileUseCase(users, sendEmailVerification, logger),
+      inject: [UserRepository, SendEmailVerificationUseCase, Logger],
+    },
+    {
       provide: LoginAdministratorUseCase,
       useFactory: (
         administrators: AdministratorRepository,
         users: UserRepository,
         hasher: Hasher,
-      ) =>
-        new LoginAdministratorUseCase(administrators, users, hasher),
+      ) => new LoginAdministratorUseCase(administrators, users, hasher),
       inject: [AdministratorRepository, UserRepository, Hasher],
     },
   ],
