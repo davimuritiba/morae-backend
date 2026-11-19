@@ -71,6 +71,16 @@ enum MinimumStay {
   TWELVE_MONTHS
 }
 
+enum ChatType {
+  DIRECT
+  GROUP
+}
+
+enum ParticipantRole {
+  ADMIN
+  MEMBER
+}
+
 // ─── Módulo user ────────────────────────────────────────────────────────────
 
 model User {
@@ -93,7 +103,6 @@ model User {
   administrator           Administrator?
   propertyCohabitancies   PropertyCohabitant[]
   emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens    PasswordResetToken[]
 
   @@map("users")
 }
@@ -264,6 +273,7 @@ model Listing {
 
   property Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   media    ListingMedia[]
+  messages Message[]
 
   @@index([propertyId])
   @@index([status])
@@ -283,4 +293,56 @@ model ListingMedia {
   @@unique([listingId, position])
   @@index([listingId])
   @@map("listing_media")
+}
+
+// ─── Módulo interaction: chat ───────────────────────────────────────────────
+
+model Chat {
+  id            String    @id @db.Uuid
+  type          ChatType
+  name          String?   @db.VarChar(60)
+  createdBy     String    @map("created_by") @db.Uuid
+  // Só em DIRECT: os dois userIds em ordem ("a:b"), uma conversa por par.
+  directKey     String?   @unique @map("direct_key") @db.VarChar(80)
+  lastMessageAt DateTime? @map("last_message_at") @db.Timestamptz(3)
+  createdAt     DateTime  @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @map("updated_at") @db.Timestamptz(3)
+
+  creator      User              @relation(fields: [createdBy], references: [id])
+  participants ChatParticipant[]
+  messages     Message[]
+
+  @@map("chats")
+}
+
+model ChatParticipant {
+  chatId     String          @map("chat_id") @db.Uuid
+  userId     String          @map("user_id") @db.Uuid
+  role       ParticipantRole
+  joinedAt   DateTime        @map("joined_at") @db.Timestamptz(3)
+  lastReadAt DateTime?       @map("last_read_at") @db.Timestamptz(3)
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([chatId, userId])
+  @@index([userId])
+  @@map("chat_participants")
+}
+
+model Message {
+  id        String   @id @db.Uuid
+  chatId    String   @map("chat_id") @db.Uuid
+  senderId  String   @map("sender_id") @db.Uuid
+  content   String?  @db.VarChar(2000)
+  listingId String?  @map("listing_id") @db.Uuid
+  createdAt DateTime @map("created_at") @db.Timestamptz(3)
+
+  chat    Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender  User     @relation(fields: [senderId], references: [id])
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([chatId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([listingId])
+  @@map("messages")
 }
