@@ -2,7 +2,7 @@
 
 API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A proposta é conectar estudantes que procuram moradia ou colegas de quarto a proprietários de imóveis, com verificação de vínculo acadêmico, compatibilidade entre perfis, anúncios, visitas, chat e contratos.
 
-> **Situação em 12/11/2026:** o cadastro de estudante funciona de ponta a ponta. A rota `POST /students` valida os dados, aplica as regras de domínio, gera o hash da senha com Argon2, grava no PostgreSQL numa única transação e envia um link de verificação do e-mail, confirmado por `POST /email-verification/confirm`. Ainda faltam a autenticação e os demais módulos. Veja [Progresso do desenvolvimento](#progresso-do-desenvolvimento).
+> **Autenticação:** o cadastro e login de usuários, a verificação de e-mail e a redefinição de senha por link enviado por e-mail estão disponíveis. O fluxo de redefinição usa tokens de uso único, armazenados como hash e com expiração configurável.
 
 ## Stack
 
@@ -51,8 +51,9 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
    | `SMTP_SECURE`                  | não         | `true` para TLS direto (porta 465). Padrão: `false`.                                                                                                     |
    | `SMTP_USER` / `SMTP_PASSWORD`  | não         | Credenciais do SMTP. O Mailpit não exige.                                                                                                                |
    | `MAIL_FROM`                    | **sim**     | Remetente dos e-mails, ex.: `"Moraê <nao-responda@morae.local>"`.                                                                                        |
-   | `APP_WEB_URL`                  | **sim**     | Endereço do front-end. O link de verificação é `<APP_WEB_URL>/verificar-email?token=...`.                                                                |
-   | `EMAIL_VERIFICATION_TTL_HOURS` | não         | Validade do link de verificação, em horas. Padrão: `24`.                                                                                                 |
+   | `APP_WEB_URL`                  | **sim**     | Endereço do front-end; usado nos links de verificação e redefinição de senha.                                                                           |
+   | `EMAIL_VERIFICATION_TTL_HOURS` | não         | Validade do link de verificação, em horas. Padrão: `24`.                                                                                                |
+   | `PASSWORD_RESET_TTL_MINUTES`   | não         | Validade do link de redefinição de senha, em minutos. Padrão: `30`.                                                                                    |
 
    O `.env` está no `.gitignore`. **Nunca** versione credenciais. Os valores do `.env.example` já funcionam com o Docker Compose do projeto.
 
@@ -191,6 +192,30 @@ Resposta `201 Created`:
   "permissions": []
 }
 ```
+
+### `POST /auth/password-reset/request`
+
+Solicita por e-mail um link para redefinir a senha da conta.
+
+```json
+{ "email": "maria@ufal.br" }
+```
+
+Responde sempre `202 Accepted`, sem corpo, exista ou não uma conta com o e-mail. O envio acontece em segundo plano para evitar revelar quais endereços estão cadastrados. O limite é de 3 solicitações a cada 15 minutos por IP. O link abre `/redefinir-senha?token=...`, expira em 30 minutos por padrão e um novo pedido invalida links anteriores.
+
+### `POST /auth/password-reset/confirm`
+
+Altera a senha com o token recebido por e-mail. A senha e sua confirmação devem ter entre 8 e 128 caracteres.
+
+```json
+{
+  "token": "<token do link>",
+  "password": "senha-nova-segura",
+  "passwordConfirmation": "senha-nova-segura"
+}
+```
+
+Responde `204 No Content` quando a senha é alterada. Token inexistente, expirado ou já usado e senhas diferentes respondem `422`. O token é consumido junto da alteração da senha em uma transação e não pode ser reutilizado.
 
 ### `POST /students`
 

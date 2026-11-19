@@ -116,6 +116,14 @@ export class User {
     this.touch();
   }
 
+  changePasswordHash(passwordHash: string): void {
+    if (passwordHash.length === 0) {
+      throw new Error('passwordHash não pode ser vazio.');
+    }
+    this.#props.passwordHash = passwordHash;
+    this.touch();
+  }
+
   suspend(): void {
     this.changeStatus([AccountStatus.ACTIVE], AccountStatus.SUSPENDED);
   }
