@@ -18,10 +18,12 @@ import { StartDirectChatUseCase } from './application/use-cases/start-direct-cha
 import { ChatRepository } from './domain/repositories/chat.repository.js';
 import { MessageRepository } from './domain/repositories/message.repository.js';
 import { FavoriteRepository } from './domain/repositories/favorite.repository.js';
+import { InterestRepository } from './domain/repositories/interest.repository.js';
 import { PrismaChatInboxQuery } from './infra/persistence/queries/prisma-chat-inbox.query.js';
 import { PrismaChatRepository } from './infra/persistence/repositories/prisma-chat.repository.js';
 import { PrismaMessageRepository } from './infra/persistence/repositories/prisma-message.repository.js';
 import { PrismaFavoriteRepository } from './infra/persistence/repositories/prisma-favorite.repository.js';
+import { PrismaInterestRepository } from './infra/persistence/repositories/prisma-interest.repository.js';
 import { PrismaChatUserDirectory } from './infra/services/prisma-chat-user-directory.js';
 import { PrismaListingDirectory } from './infra/services/prisma-listing-directory.js';
 import { ChatsController } from './presentation/http/controllers/chats.controller.js';
@@ -29,15 +31,20 @@ import { FavoritesController } from './presentation/http/controllers/favorites.c
 import { AddFavoriteUseCase } from './application/use-cases/add-favorite/add-favorite.use-case.js';
 import { ListFavoritesUseCase } from './application/use-cases/list-favorites/list-favorites.use-case.js';
 import { RemoveFavoriteUseCase } from './application/use-cases/remove-favorite/remove-favorite.use-case.js';
+import { AddInterestUseCase } from './application/use-cases/add-interest/add-interest.use-case.js';
+import { RemoveInterestUseCase } from './application/use-cases/remove-interest/remove-interest.use-case.js';
+import { ListInterestedUsersUseCase } from './application/use-cases/list-interested-users/list-interested-users.use-case.js';
+import { InterestsController } from './presentation/http/controllers/interests.controller.js';
 import { ChatGateway } from './presentation/ws/chat.gateway.js';
 import { SocketChatNotifier } from './presentation/ws/socket-chat-notifier.js';
 
 @Module({
-  controllers: [ChatsController, FavoritesController],
+  controllers: [ChatsController, FavoritesController, InterestsController],
   providers: [
     { provide: ChatRepository, useClass: PrismaChatRepository },
     { provide: MessageRepository, useClass: PrismaMessageRepository },
     { provide: FavoriteRepository, useClass: PrismaFavoriteRepository },
+    { provide: InterestRepository, useClass: PrismaInterestRepository },
     { provide: ChatInboxQuery, useClass: PrismaChatInboxQuery },
     { provide: ChatUserDirectory, useClass: PrismaChatUserDirectory },
     { provide: ListingDirectory, useClass: PrismaListingDirectory },
@@ -55,6 +62,22 @@ import { SocketChatNotifier } from './presentation/ws/socket-chat-notifier.js';
       provide: RemoveFavoriteUseCase,
       useFactory: (favorites: FavoriteRepository) => new RemoveFavoriteUseCase(favorites),
       inject: [FavoriteRepository],
+    },
+    {
+      provide: AddInterestUseCase,
+      useFactory: (interests: InterestRepository) => new AddInterestUseCase(interests),
+      inject: [InterestRepository],
+    },
+    {
+      provide: RemoveInterestUseCase,
+      useFactory: (interests: InterestRepository) => new RemoveInterestUseCase(interests),
+      inject: [InterestRepository],
+    },
+    {
+      provide: ListInterestedUsersUseCase,
+      useFactory: (interests: InterestRepository) =>
+        new ListInterestedUsersUseCase(interests),
+      inject: [InterestRepository],
     },
     ChatGateway,
     { provide: ChatNotifier, useClass: SocketChatNotifier },
