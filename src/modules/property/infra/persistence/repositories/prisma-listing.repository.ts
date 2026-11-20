@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { ListingStatus } from '../../../../../shared/infra/database/generated/prisma/client.js';
+import {
+  HousingType as PrismaHousingType,
+  ListingStatus,
+} from '../../../../../shared/infra/database/generated/prisma/client.js';
 import type { Prisma } from '../../../../../shared/infra/database/generated/prisma/client.js';
 import { PrismaService } from '../../../../../shared/infra/database/prisma.service.js';
 import { HousingType } from '../../../domain/enums/housing-type.enum.js';
@@ -32,29 +35,45 @@ export class PrismaListingRepository extends ListingRepository {
 
   async search(filter: SearchListingsFilter): Promise<ListingSearchResult[]> {
     const location = filter.location?.trim();
+    const propertyWhere: Prisma.PropertyWhereInput = {};
+    if (filter.housingType) {
+      propertyWhere.housingType =
+        filter.housingType === HousingType.REPUBLIC
+          ? { in: [PrismaHousingType.REPUBLIC, PrismaHousingType.ROOM] }
+          : (filter.housingType as PrismaHousingType);
+    }
+    if (filter.minBedrooms !== undefined) {
+      propertyWhere.bedrooms = { gte: filter.minBedrooms };
+    }
+    if (location) {
+      propertyWhere.residence = {
+        is: {
+          OR: [
+            { city: { contains: location, mode: 'insensitive' } },
+            { neighborhood: { contains: location, mode: 'insensitive' } },
+            { state: { contains: location, mode: 'insensitive' } },
+          ],
+        },
+      };
+    }
+
+    const orderBy: Prisma.ListingOrderByWithRelationInput[] =
+      filter.sortBy === 'rent_asc'
+        ? [{ rent: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }]
+        : filter.sortBy === 'rent_desc'
+          ? [{ rent: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }]
+          : [{ createdAt: 'desc' }, { id: 'asc' }];
+
     const rows = await this.prisma.listing.findMany({
       where: {
         status: ListingStatus.APPROVED,
-        ...(location
-          ? {
-              property: {
-                is: {
-                  residence: {
-                    is: {
-                      OR: [
-                        { city: { contains: location, mode: 'insensitive' } },
-                        { neighborhood: { contains: location, mode: 'insensitive' } },
-                        { state: { contains: location, mode: 'insensitive' } },
-                      ],
-                    },
-                  },
-                },
-              },
-            }
+        ...(filter.maxRent !== undefined ? { rent: { lte: filter.maxRent } } : {}),
+        ...(Object.keys(propertyWhere).length > 0
+          ? { property: { is: propertyWhere } }
           : {}),
       },
       include: listingSearchInclude,
-      orderBy: { createdAt: 'desc' },
+      orderBy,
     });
 
     return rows.map((row) => this.toSearchResult(row));

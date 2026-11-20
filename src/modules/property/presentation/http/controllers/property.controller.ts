@@ -38,7 +38,13 @@ export class PropertyController {
   @Get()
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   search(@Query() query: SearchListingsDto) {
-    return this.searchListings.execute({ location: query.location });
+    return this.searchListings.execute({
+      location: query.location,
+      maxRent: query.maxRent,
+      housingType: query.housingType,
+      minBedrooms: query.minBedrooms,
+      sortBy: query.sortBy,
+    });
   }
 
   @Get(':listingId')
