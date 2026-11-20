@@ -57,6 +57,7 @@ const HOUR_MS = 60 * 60 * 1000;
     EmailVerificationController,
     PasswordResetController,
   ],
+  exports: [UserRepository, StudentRepository],
   providers: [
     // Contratos → implementações. As classes abstratas servem de token.
     { provide: UserRepository, useClass: PrismaUserRepository },
