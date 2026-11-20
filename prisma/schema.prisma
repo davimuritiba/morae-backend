@@ -109,6 +109,7 @@ model User {
   chatParticipations      ChatParticipant[]
   sentMessages            Message[]
   favorites               Favorite[]
+  passwordResetTokens     PasswordResetToken[]
   interests               Interest[]
   passwordResetTokens    PasswordResetToken[]
 
@@ -145,6 +146,61 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+enum SleepTime {
+  BEFORE_21
+  FROM_21_TO_23
+  FROM_23_TO_01
+  AFTER_01
+}
+
+enum StudyAtHome {
+  YES
+  SOMETIMES
+  NO
+}
+
+enum OrganizationLevel {
+  VERY_ORGANIZED
+  SOMEWHAT
+  IMPROVING
+}
+
+enum VisitorFrequency {
+  RARELY
+  SOMETIMES
+  FREQUENTLY
+}
+
+enum SmokingFrequency {
+  YES
+  SOMETIMES
+  NO
+}
+
+enum PetPreference {
+  YES
+  NO
+}
+
+enum CleaningFrequency {
+  DAILY
+  WEEKLY
+  FLEXIBLE
+}
+
+enum EnvironmentPreference {
+  QUIET
+  BUSY
+  INDIFFERENT
+}
+
+enum LifestyleTrait {
+  CALM
+  SOCIAL
+  ADVENTUROUS
+  STUDIOUS
+}
+
 model Student {
   id                 String             @id @db.Uuid
   userId             String             @unique @map("user_id") @db.Uuid
@@ -156,8 +212,9 @@ model Student {
   createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime           @map("updated_at") @db.Timestamptz(3)
 
-  user    User            @relation(fields: [userId], references: [id])
-  profile StudentProfile?
+  user                 User                         @relation(fields: [userId], references: [id])
+  profile              StudentProfile?
+  compatibilityAnswers StudentCompatibilityAnswers?
 
   @@map("students")
 }
@@ -181,6 +238,25 @@ model StudentProfile {
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@map("student_profiles")
+}
+
+// Respostas do formulário obrigatório de perfil de convivência.
+model StudentCompatibilityAnswers {
+  studentId    String                @id @map("student_id") @db.Uuid
+  sleepTime    SleepTime             @map("sleep_time")
+  studyAtHome  StudyAtHome           @map("study_at_home")
+  organization OrganizationLevel
+  visitors     VisitorFrequency
+  smoking      SmokingFrequency
+  pets         PetPreference
+  cleaning     CleaningFrequency
+  environment  EnvironmentPreference
+  lifestyle    LifestyleTrait[]
+  updatedAt    DateTime              @map("updated_at") @db.Timestamptz(3)
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("student_compatibility_answers")
 }
 
 model PropertyOwner {

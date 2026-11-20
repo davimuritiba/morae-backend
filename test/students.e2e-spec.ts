@@ -16,6 +16,17 @@ const validBody = {
   course: 'Ciência da Computação',
   period: 3,
   expectedGraduation: '2027-12-15',
+  compatibilityAnswers: {
+    sleepTime: 'FROM_23_TO_01',
+    studyAtHome: 'SOMETIMES',
+    organization: 'VERY_ORGANIZED',
+    visitors: 'SOMETIMES',
+    smoking: 'NO',
+    pets: 'NO',
+    cleaning: 'WEEKLY',
+    environment: 'QUIET',
+    lifestyle: ['CALM', 'STUDIOUS'],
+  },
 };
 
 describe('POST /students (e2e)', () => {
