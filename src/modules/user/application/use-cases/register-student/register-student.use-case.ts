@@ -2,6 +2,7 @@ import type { Logger } from '../../../../../shared/application/logger.js';
 import type { UnitOfWork } from '../../../../../shared/application/unit-of-work.js';
 import type { UseCase } from '../../../../../shared/application/use-case.js';
 import { Student } from '../../../domain/entities/student.entity.js';
+import { StudentCompatibilityAnswers } from '../../../domain/entities/student-compatibility-answers.entity.js';
 import { User } from '../../../domain/entities/user.entity.js';
 import { CpfAlreadyInUseError } from '../../../domain/errors/cpf-already-in-use.error.js';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error.js';
@@ -77,6 +78,10 @@ export class RegisterStudentUseCase implements UseCase<
       period,
       expectedGraduation: input.expectedGraduation,
     });
+
+    student.defineCompatibilityAnswers(
+      StudentCompatibilityAnswers.create(input.compatibilityAnswers),
+    );
 
     const propertyOwner = input.advertisesProperty
       ? PropertyOwner.create({ userId: user.id })

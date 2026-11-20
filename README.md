@@ -310,6 +310,23 @@ Responde `204 No Content` quando a senha é alterada. Token inexistente, expirad
 
 ### `POST /students`
 
+O cadastro também exige o objeto compatibilityAnswers, com respostas estruturadas do formulário de convivência. O front deve converter os rótulos exibidos em códigos:
+
+| Campo | Valores aceitos |
+|---|---|
+| sleepTime | BEFORE_21, FROM_21_TO_23, FROM_23_TO_01, AFTER_01 |
+| studyAtHome | YES, SOMETIMES, NO |
+| organization | VERY_ORGANIZED, SOMEWHAT, IMPROVING |
+| visitors | RARELY, SOMETIMES, FREQUENTLY |
+| smoking | YES, SOMETIMES, NO |
+| pets | YES, NO |
+| cleaning | DAILY, WEEKLY, FLEXIBLE |
+| environment | QUIET, BUSY, INDIFFERENT |
+| lifestyle | Lista não vazia, sem repetição: CALM, SOCIAL, ADVENTUROUS, STUDIOUS |
+
+As respostas ficam na tabela student_compatibility_answers, vinculadas ao estudante. A migration não altera contas existentes; será necessário um fluxo de atualização para que estudantes já cadastrados respondam ao formulário.
+
+
 Cadastra estudante buscador, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`, e um link de verificação é enviado para o e-mail informado. Se o envio falhar, o cadastro continua valendo. Para estudante ofertador, envie `advertisesProperty: true`: o cadastro cria também um `PropertyOwner` ligado ao mesmo usuário, necessário para anunciar imóveis. Omitir o campo ou enviar `false` mantém o cadastro de estudante buscador.
 
 Corpo da requisição:
@@ -325,6 +342,17 @@ Corpo da requisição:
   "course": "Ciência da Computação",
   "period": 3,
   "expectedGraduation": "2027-12-15",
+  "compatibilityAnswers": {
+    "sleepTime": "FROM_23_TO_01",
+    "studyAtHome": "SOMETIMES",
+    "organization": "VERY_ORGANIZED",
+    "visitors": "SOMETIMES",
+    "smoking": "NO",
+    "pets": "NO",
+    "cleaning": "WEEKLY",
+    "environment": "QUIET",
+    "lifestyle": ["CALM", "STUDIOUS"]
+  },
   "advertisesProperty": false
 }
 ```

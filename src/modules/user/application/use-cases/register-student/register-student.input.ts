@@ -1,3 +1,5 @@
+import type { StudentCompatibilityAnswersInput } from '../../../domain/entities/student-compatibility-answers.entity.js';
+
 // Dados crus, como chegam da camada de apresentação. A validação é feita
 // pelos value objects e entidades dentro do caso de uso.
 export interface RegisterStudentInput {
@@ -10,5 +12,6 @@ export interface RegisterStudentInput {
   course: string;
   period: number;
   expectedGraduation: Date;
+  compatibilityAnswers: StudentCompatibilityAnswersInput;
   advertisesProperty?: boolean;
 }
