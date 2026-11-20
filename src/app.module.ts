@@ -3,6 +3,7 @@ import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { InteractionModule } from './modules/interaction/interaction.module.js';
+import { MatchingModule } from './modules/matching/matching.module.js';
 import { PropertyModule } from './modules/property/property.module.js';
 import { AuthModule } from './shared/infra/auth/auth.module.js';
 import { UserModule } from './modules/user/user.module.js';
@@ -32,6 +33,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     UserModule,
     PropertyModule,
     InteractionModule,
+    MatchingModule,
   ],
   providers: [
     // Registrados como providers (e não em main.ts) para valerem também nos
