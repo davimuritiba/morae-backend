@@ -3,6 +3,7 @@ import type { RegisterStudentOutput } from '../../../application/use-cases/regis
 export interface RegisterStudentResponse {
   userId: string;
   studentId: string;
+  propertyOwnerId?: string;
 }
 
 // Define exatamente o que sai na resposta HTTP. Campos novos no output do
@@ -12,6 +13,9 @@ export class RegisterStudentPresenter {
     return {
       userId: output.userId,
       studentId: output.studentId,
+      ...(output.propertyOwnerId && {
+        propertyOwnerId: output.propertyOwnerId,
+      }),
     };
   }
 }

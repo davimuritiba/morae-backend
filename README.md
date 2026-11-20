@@ -302,7 +302,7 @@ Responde `204 No Content` quando a senha é alterada. Token inexistente, expirad
 
 ### `POST /students`
 
-Cadastra um estudante, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`, e um link de verificação é enviado para o e-mail informado. Se o envio do e-mail falhar, o cadastro continua valendo: o erro vai para o log e o usuário pode pedir o reenvio.
+Cadastra estudante buscador, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`, e um link de verificação é enviado para o e-mail informado. Se o envio falhar, o cadastro continua valendo. Para estudante ofertador, envie `advertisesProperty: true`: o cadastro cria também um `PropertyOwner` ligado ao mesmo usuário, necessário para anunciar imóveis. Omitir o campo ou enviar `false` mantém o cadastro de estudante buscador.
 
 Corpo da requisição:
 
@@ -316,11 +316,12 @@ Corpo da requisição:
   "enrollmentNumber": "20231234",
   "course": "Ciência da Computação",
   "period": 3,
-  "expectedGraduation": "2027-12-15"
+  "expectedGraduation": "2027-12-15",
+  "advertisesProperty": false
 }
 ```
 
-`phone` é opcional. `expectedGraduation` é uma data ISO 8601 (`AAAA-MM-DD`). Campos que não estão na lista acima são recusados.
+`phone` e `advertisesProperty` são opcionais. `expectedGraduation` é uma data ISO 8601 (`AAAA-MM-DD`). Campos que não estão na lista acima são recusados. Com `advertisesProperty: true`, a resposta também inclui `propertyOwnerId`.
 
 Resposta `201 Created`:
 
@@ -340,6 +341,12 @@ Erros:
 | `422`  | Dado que viola uma regra de negócio (CPF inválido, senha curta, período fora...) | `INVALID_CPF`, `INVALID_EMAIL`, `INVALID_PASSWORD`, `INVALID_ACADEMIC_PERIOD`    |
 
 Os erros `409` e `422` têm o corpo `{ "statusCode": 409, "code": "EMAIL_ALREADY_IN_USE", "message": "Este e-mail já está cadastrado." }`.
+
+### `POST /property-owners`
+
+Cadastra proprietário de imóvel, criando `User` e `PropertyOwner` em uma transação e enviando verificação de e-mail. Aceita `name`, `email`, `cpf`, `password` e `phone` opcional. A resposta `201 Created` contém `{ "userId": "uuid", "propertyOwnerId": "uuid" }`. E-mail e CPF duplicados retornam `409`; dados inválidos retornam `422`; campos extras retornam `400`.
+
+Um estudante que também anuncia deve usar `POST /students` com `advertisesProperty: true`, para manter estudante e perfil de anunciante associados à mesma conta. Assim, os perfis disponíveis são estudante buscador (`POST /students`), estudante ofertador (`POST /students` com `advertisesProperty: true`) e proprietário (`POST /property-owners`).
 
 ### `POST /email-verification/confirm`
 

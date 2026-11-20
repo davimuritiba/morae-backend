@@ -19,6 +19,7 @@ import { InvalidPasswordError } from '../../../domain/errors/invalid-password.er
 import { InvalidPhoneError } from '../../../domain/errors/invalid-phone.error.js';
 import { InMemoryEmailVerificationTokenRepository } from '../../../infra/persistence/in-memory/in-memory-email-verification-token.repository.js';
 import { InMemoryStudentRepository } from '../../../infra/persistence/in-memory/in-memory-student.repository.js';
+import { InMemoryPropertyOwnerRepository } from '../../../infra/persistence/in-memory/in-memory-property-owner.repository.js';
 import { InMemoryUserRepository } from '../../../infra/persistence/in-memory/in-memory-user.repository.js';
 import { FakeEmailVerificationNotifier } from '../../fakes/fake-email-verification-notifier.js';
 import { FakeHasher } from '../../fakes/fake-hasher.js';
@@ -44,6 +45,7 @@ function makeInput(
 describe('RegisterStudentUseCase', () => {
   let users: InMemoryUserRepository;
   let students: InMemoryStudentRepository;
+  let propertyOwners: InMemoryPropertyOwnerRepository;
   let hasher: FakeHasher;
   let tokens: InMemoryEmailVerificationTokenRepository;
   let notifier: FakeEmailVerificationNotifier;
@@ -53,6 +55,7 @@ describe('RegisterStudentUseCase', () => {
   beforeEach(() => {
     users = new InMemoryUserRepository();
     students = new InMemoryStudentRepository();
+    propertyOwners = new InMemoryPropertyOwnerRepository();
     hasher = new FakeHasher();
     tokens = new InMemoryEmailVerificationTokenRepository();
     notifier = new FakeEmailVerificationNotifier();
@@ -70,6 +73,7 @@ describe('RegisterStudentUseCase', () => {
     sut = new RegisterStudentUseCase(
       users,
       students,
+      propertyOwners,
       hasher,
       unitOfWork,
       sendEmailVerification,
@@ -114,6 +118,13 @@ describe('RegisterStudentUseCase', () => {
     const [student] = students.items;
     expect(output).toEqual({ userId: user.id, studentId: student.id });
     expect(student.userId).toBe(user.id);
+  });
+
+  it('cria também o perfil de proprietário para estudante ofertador', async () => {
+    const output = await sut.execute(makeInput({ advertisesProperty: true }));
+    expect(output.propertyOwnerId).toBe(propertyOwners.items[0].id);
+    expect(propertyOwners.items[0].userId).toBe(output.userId);
+    expect(students.items[0].userId).toBe(output.userId);
   });
 
   it('cria a conta ativa, com e-mail não verificado e estudante pendente', async () => {

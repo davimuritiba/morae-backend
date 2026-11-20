@@ -18,16 +18,19 @@ import { LoginAdministratorUseCase } from './application/use-cases/login-adminis
 import { RequestPasswordResetUseCase } from './application/use-cases/request-password-reset/request-password-reset.use-case.js';
 import { ResetPasswordUseCase } from './application/use-cases/reset-password/reset-password.use-case.js';
 import { RegisterStudentUseCase } from './application/use-cases/register-student/register-student.use-case.js';
+import { RegisterPropertyOwnerUseCase } from './application/use-cases/register-property-owner/register-property-owner.use-case.js';
 import { ResendEmailVerificationUseCase } from './application/use-cases/resend-email-verification/resend-email-verification.use-case.js';
 import { SendEmailVerificationUseCase } from './application/use-cases/send-email-verification/send-email-verification.use-case.js';
 import { EmailVerificationTokenRepository } from './domain/repositories/email-verification-token.repository.js';
 import { PasswordResetTokenRepository } from './domain/repositories/password-reset-token.repository.js';
 import { StudentRepository } from './domain/repositories/student.repository.js';
+import { PropertyOwnerRepository } from './domain/repositories/property-owner.repository.js';
 import { UserRepository } from './domain/repositories/user.repository.js';
 import { PrismaEmailVerificationTokenRepository } from './infra/persistence/repositories/prisma-email-verification-token.repository.js';
 import { PrismaPasswordResetTokenRepository } from './infra/persistence/repositories/prisma-password-reset-token.repository.js';
 import { AdministratorRepository } from './domain/repositories/administrator.repository.js';
 import { PrismaStudentRepository } from './infra/persistence/repositories/prisma-student.repository.js';
+import { PrismaPropertyOwnerRepository } from './infra/persistence/repositories/prisma-property-owner.repository.js';
 import { PrismaUserRepository } from './infra/persistence/repositories/prisma-user.repository.js';
 import { PrismaAdministratorRepository } from './infra/persistence/repositories/prisma-administrator.repository.js';
 import { Argon2Hasher } from './infra/services/argon2-hasher.js';
@@ -38,6 +41,7 @@ import { AuthController } from './presentation/http/controllers/auth.controller.
 import { EmailVerificationController } from './presentation/http/controllers/email-verification.controller.js';
 import { PasswordResetController } from './presentation/http/controllers/password-reset.controller.js';
 import { StudentsController } from './presentation/http/controllers/students.controller.js';
+import { PropertyOwnersController } from './presentation/http/controllers/property-owners.controller.js';
 import { UsersController } from './presentation/http/controllers/users.controller.js';
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -48,6 +52,7 @@ const HOUR_MS = 60 * 60 * 1000;
   controllers: [
     AuthController,
     StudentsController,
+    PropertyOwnersController,
     UsersController,
     EmailVerificationController,
     PasswordResetController,
@@ -56,6 +61,10 @@ const HOUR_MS = 60 * 60 * 1000;
     // Contratos → implementações. As classes abstratas servem de token.
     { provide: UserRepository, useClass: PrismaUserRepository },
     { provide: StudentRepository, useClass: PrismaStudentRepository },
+    {
+      provide: PropertyOwnerRepository,
+      useClass: PrismaPropertyOwnerRepository,
+    },
     {
       provide: EmailVerificationTokenRepository,
       useClass: PrismaEmailVerificationTokenRepository,
@@ -220,6 +229,7 @@ const HOUR_MS = 60 * 60 * 1000;
       useFactory: (
         users: UserRepository,
         students: StudentRepository,
+        propertyOwners: PropertyOwnerRepository,
         hasher: Hasher,
         unitOfWork: UnitOfWork,
         sendEmailVerification: SendEmailVerificationUseCase,
@@ -228,6 +238,7 @@ const HOUR_MS = 60 * 60 * 1000;
         new RegisterStudentUseCase(
           users,
           students,
+          propertyOwners,
           hasher,
           unitOfWork,
           sendEmailVerification,
@@ -236,6 +247,34 @@ const HOUR_MS = 60 * 60 * 1000;
       inject: [
         UserRepository,
         StudentRepository,
+        PropertyOwnerRepository,
+        Hasher,
+        UnitOfWork,
+        SendEmailVerificationUseCase,
+        Logger,
+      ],
+    },
+    {
+      provide: RegisterPropertyOwnerUseCase,
+      useFactory: (
+        users: UserRepository,
+        propertyOwners: PropertyOwnerRepository,
+        hasher: Hasher,
+        unitOfWork: UnitOfWork,
+        sendEmailVerification: SendEmailVerificationUseCase,
+        logger: Logger,
+      ) =>
+        new RegisterPropertyOwnerUseCase(
+          users,
+          propertyOwners,
+          hasher,
+          unitOfWork,
+          sendEmailVerification,
+          logger,
+        ),
+      inject: [
+        UserRepository,
+        PropertyOwnerRepository,
         Hasher,
         UnitOfWork,
         SendEmailVerificationUseCase,

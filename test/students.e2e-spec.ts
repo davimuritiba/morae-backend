@@ -55,6 +55,30 @@ describe('POST /students (e2e)', () => {
     expect(user?.passwordHash.startsWith('$argon2id$')).toBe(true);
   });
 
+  it('201: cadastra estudante ofertador com perfil de estudante e proprietário', async () => {
+    const response = await post({
+      ...validBody,
+      advertisesProperty: true,
+    }).expect(201);
+    expect(Object.keys(response.body).sort()).toEqual([
+      'propertyOwnerId',
+      'studentId',
+      'userId',
+    ]);
+    const user = await prisma.user.findUnique({
+      where: { id: response.body.userId },
+      include: { student: true, propertyOwner: true },
+    });
+    expect(user?.student?.id).toBe(response.body.studentId);
+    expect(user?.propertyOwner?.id).toBe(response.body.propertyOwnerId);
+    expect(user?.student?.userId).toBe(user?.propertyOwner?.userId);
+  });
+
+  it('400: advertisesProperty deve ser booleano', async () => {
+    await post({ ...validBody, advertisesProperty: 'true' }).expect(400);
+    expect(await prisma.user.count()).toBe(0);
+  });
+
   it('201: telefone é opcional', async () => {
     const { phone: _phone, ...withoutPhone } = validBody;
 
