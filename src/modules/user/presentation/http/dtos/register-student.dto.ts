@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsInt,
   IsISO8601,
   IsOptional,
@@ -43,4 +44,9 @@ export class RegisterStudentDto {
   // existem, como "2027-02-30".
   @IsISO8601({ strict: true })
   expectedGraduation: string;
+
+  // Quando verdadeiro, a conta recebe também o perfil necessário para anunciar vagas.
+  @IsOptional()
+  @IsBoolean()
+  advertisesProperty?: boolean;
 }

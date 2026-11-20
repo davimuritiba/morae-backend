@@ -10,4 +10,5 @@ export interface RegisterStudentInput {
   course: string;
   period: number;
   expectedGraduation: Date;
+  advertisesProperty?: boolean;
 }
