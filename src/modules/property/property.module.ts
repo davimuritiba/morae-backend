@@ -12,6 +12,10 @@ import { AdminListingRepository } from './domain/repositories/admin-listing.repo
 import { PrismaAdminListingRepository } from './infra/persistence/repositories/prisma-admin-listing.repository.js';
 import { ListAdminListingsUseCase } from './application/use-cases/list-admin-listings/list-admin-listings.use-case.js';
 import { GetAdminListingUseCase } from './application/use-cases/get-admin-listing/get-admin-listing.use-case.js';
+import { OwnerListingRepository } from './domain/repositories/owner-listing.repository.js';
+import { PrismaOwnerListingRepository } from './infra/persistence/repositories/prisma-owner-listing.repository.js';
+import { ManageOwnerListingUseCase } from './application/use-cases/manage-owner-listing/manage-owner-listing.use-case.js';
+import { RemoveOwnerListingUseCase } from './application/use-cases/manage-owner-listing/remove-owner-listing.use-case.js';
 
 @Module({
   providers: [
@@ -35,6 +39,18 @@ import { GetAdminListingUseCase } from './application/use-cases/get-admin-listin
     },
     PrismaAdminListingRepository,
     { provide: AdminListingRepository, useExisting: PrismaAdminListingRepository },
+    PrismaOwnerListingRepository,
+    { provide: OwnerListingRepository, useExisting: PrismaOwnerListingRepository },
+    {
+      provide: ManageOwnerListingUseCase,
+      useFactory: (listings: OwnerListingRepository) => new ManageOwnerListingUseCase(listings),
+      inject: [OwnerListingRepository],
+    },
+    {
+      provide: RemoveOwnerListingUseCase,
+      useFactory: (listings: OwnerListingRepository) => new RemoveOwnerListingUseCase(listings),
+      inject: [OwnerListingRepository],
+    },
     {
       provide: ListAdminListingsUseCase,
       useFactory: (listings: AdminListingRepository) =>

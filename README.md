@@ -135,6 +135,14 @@ Exige autenticação e adiciona o anúncio aprovado aos favoritos do usuário. A
 
 Exige autenticação e remove o favorito do usuário autenticado. Retorna `204 No Content`; remover um anúncio que não está salvo não gera erro. Um UUID inválido retorna `400`.
 
+### `PATCH /properties/:listingId/status`
+
+Exige `Authorization: Bearer <accessToken>` do proprietário do anúncio. Aceita `{ "status": "ARCHIVED" }` para arquivar um anúncio aprovado ou `{ "status": "APPROVED" }` para reativar um arquivado. Retorna `200 OK` com o identificador e o novo status. Apenas o dono pode alterar o anúncio; um anúncio inexistente ou de outro usuário retorna `404`. Transições inválidas retornam `409 INVALID_LISTING_TRANSITION`.
+
+### `DELETE /properties/:listingId`
+
+Exige autenticação do dono do anúncio. Desativa o anúncio com status `REMOVED`, preservando o histórico e os dados associados; ele deixa de aparecer na busca e nos detalhes públicos e não pode ser reativado. Retorna `204 No Content`. O front deve chamar essa rota somente depois da confirmação do usuário.
+
 ### `GET /properties?location=<termo>`
 
 Lista anúncios aprovados. O parâmetro `location` é opcional e procura, sem diferenciar maiúsculas e minúsculas, por cidade, bairro ou estado. Sem o parâmetro, retorna todos os anúncios aprovados.
