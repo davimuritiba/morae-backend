@@ -107,6 +107,7 @@ model User {
   chatParticipations      ChatParticipant[]
   sentMessages            Message[]
   favorites               Favorite[]
+  interests               Interest[]
   passwordResetTokens    PasswordResetToken[]
 
   @@map("users")
@@ -280,6 +281,7 @@ model Listing {
   media     ListingMedia[]
   messages  Message[]
   favorites Favorite[]
+  interests Interest[]
 
   @@index([propertyId])
   @@index([status])
@@ -312,6 +314,19 @@ model Favorite {
   @@id([userId, listingId])
   @@index([listingId])
   @@map("favorites")
+}
+
+model Interest {
+  userId    String   @map("user_id") @db.Uuid
+  listingId String   @map("listing_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([listingId, createdAt(sort: Desc)])
+  @@map("interests")
 }
 
 // ─── Módulo interaction: chat ───────────────────────────────────────────────
