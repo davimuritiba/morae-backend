@@ -143,9 +143,17 @@ Exige `Authorization: Bearer <accessToken>` do proprietário do anúncio. Aceita
 
 Exige autenticação do dono do anúncio. Desativa o anúncio com status `REMOVED`, preservando o histórico e os dados associados; ele deixa de aparecer na busca e nos detalhes públicos e não pode ser reativado. Retorna `204 No Content`. O front deve chamar essa rota somente depois da confirmação do usuário.
 
-### `GET /properties?location=<termo>`
+### `GET /properties`
 
-Lista anúncios aprovados. O parâmetro `location` é opcional e procura, sem diferenciar maiúsculas e minúsculas, por cidade, bairro ou estado. Sem o parâmetro, retorna todos os anúncios aprovados.
+Lista anúncios aprovados e aceita filtros combináveis, todos opcionais:
+
+- `location`: procura, sem diferenciar maiúsculas e minúsculas, por cidade, bairro ou estado.
+- `maxRent`: valor máximo do aluguel, em reais.
+- `housingType`: `REPUBLIC`, `ROOM`, `APARTMENT` ou `HOUSE`. `REPUBLIC` também inclui anúncios do tipo `ROOM`, seguindo a categoria República mostrada no frontend.
+- `minBedrooms`: quantidade mínima de quartos (inclui anúncios com essa quantidade ou mais).
+- `sortBy`: `newest` (padrão), `rent_asc` (menor aluguel primeiro) ou `rent_desc` (maior aluguel primeiro). Empates são ordenados pela data de criação e pelo identificador do anúncio.
+
+Exemplo: `GET /properties?location=Farol&maxRent=800&housingType=ROOM&minBedrooms=1&sortBy=rent_asc`. Todos os anúncios retornados continuam restritos aos aprovados.
 
 Resposta `200 OK` (array; valores monetários são números):
 

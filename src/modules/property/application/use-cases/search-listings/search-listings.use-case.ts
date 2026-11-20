@@ -9,6 +9,9 @@ export class SearchListingsUseCase implements UseCase<SearchListingsFilter, List
   constructor(private readonly listings: ListingRepository) {}
 
   execute(input: SearchListingsFilter): Promise<ListingSearchResult[]> {
-    return this.listings.search({ location: input.location?.trim() || undefined });
+    return this.listings.search({
+      ...input,
+      location: input.location?.trim() || undefined,
+    });
   }
 }

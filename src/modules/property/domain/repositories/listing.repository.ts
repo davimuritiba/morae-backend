@@ -21,6 +21,16 @@ export interface ListingSearchResult {
 
 export interface SearchListingsFilter {
   location?: string;
+  maxRent?: number;
+  housingType?: HousingType;
+  minBedrooms?: number;
+  sortBy?: ListingSortBy;
+}
+
+export enum ListingSortBy {
+  NEWEST = 'newest',
+  RENT_ASC = 'rent_asc',
+  RENT_DESC = 'rent_desc',
 }
 
 export abstract class ListingRepository {
