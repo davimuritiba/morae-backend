@@ -5,17 +5,22 @@ export interface LoginAdministratorResponse {
   userId: string;
   login: string;
   permissions: LoginAdministratorOutput['permissions'];
+  accessToken: string;
+  tokenType: 'Bearer';
 }
 
 export class LoginAdministratorPresenter {
   static toHttp(
     output: LoginAdministratorOutput,
+    accessToken: string,
   ): LoginAdministratorResponse {
     return {
       administratorId: output.administratorId,
       userId: output.userId,
       login: output.login,
       permissions: output.permissions,
+      accessToken,
+      tokenType: 'Bearer',
     };
   }
 }

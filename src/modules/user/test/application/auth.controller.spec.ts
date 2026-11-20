@@ -5,6 +5,7 @@ import { LoginAdministratorUseCase } from '../../application/use-cases/login-adm
 import { LoginUseCase } from '../../application/use-cases/login/login.use-case.js';
 import { User } from '../../domain/entities/user.entity.js';
 import { InvalidCredentialsError } from '../../domain/errors/invalid-credentials.error.js';
+import { Permission } from '../../domain/enums/permission.enum.js';
 import { Cpf } from '../../domain/value-objects/cpf.vo.js';
 import { Email } from '../../domain/value-objects/email.vo.js';
 import { InMemoryAdministratorRepository } from '../../infra/persistence/in-memory/in-memory-administrator.repository.js';
@@ -65,4 +66,37 @@ describe('AuthController user login', () => {
       } satisfies Partial<InvalidCredentialsError>);
     },
   );
+
+  it('issues an administrator bearer token with the assigned permissions', async () => {
+    const administratorLogin = {
+      execute: vi.fn().mockResolvedValue({
+        administratorId: 'admin-id',
+        userId: 'user-id',
+        login: 'admin',
+        permissions: [Permission.MANAGE_USERS, Permission.MODERATE_LISTINGS],
+      }),
+    } as unknown as LoginAdministratorUseCase;
+    const administratorController = new AuthController(
+      new LoginUseCase(users, hasher),
+      tokenService,
+      administratorLogin,
+    );
+
+    const response = await administratorController.loginAdministrator({
+      login: 'admin',
+      password: 'senha-segura-123',
+    });
+
+    expect(response).toMatchObject({
+      administratorId: 'admin-id',
+      userId: 'user-id',
+      permissions: [Permission.MANAGE_USERS, Permission.MODERATE_LISTINGS],
+      tokenType: 'Bearer',
+    });
+    await expect(tokenService.verify(response.accessToken)).resolves.toEqual({
+      userId: 'user-id',
+      administratorId: 'admin-id',
+      permissions: [Permission.MANAGE_USERS, Permission.MODERATE_LISTINGS],
+    });
+  });
 });

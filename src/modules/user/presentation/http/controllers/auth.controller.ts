@@ -46,6 +46,11 @@ export class AuthController {
       login: dto.login,
       password: dto.password,
     });
-    return LoginAdministratorPresenter.toHttp(output);
+    const accessToken = await this.tokens.signAdministrator(
+      output.userId,
+      output.administratorId,
+      output.permissions,
+    );
+    return LoginAdministratorPresenter.toHttp(output, accessToken);
   }
 }

@@ -7,6 +7,11 @@ import { PrismaListingRepository } from './infra/persistence/repositories/prisma
 import { SearchListingsUseCase } from './application/use-cases/search-listings/search-listings.use-case.js';
 import { GetListingUseCase } from './application/use-cases/get-listing/get-listing.use-case.js';
 import { PropertyController } from './presentation/http/controllers/property.controller.js';
+import { AdminListingsController } from './presentation/http/controllers/admin-listings.controller.js';
+import { AdminListingRepository } from './domain/repositories/admin-listing.repository.js';
+import { PrismaAdminListingRepository } from './infra/persistence/repositories/prisma-admin-listing.repository.js';
+import { ListAdminListingsUseCase } from './application/use-cases/list-admin-listings/list-admin-listings.use-case.js';
+import { GetAdminListingUseCase } from './application/use-cases/get-admin-listing/get-admin-listing.use-case.js';
 
 @Module({
   providers: [
@@ -28,8 +33,22 @@ import { PropertyController } from './presentation/http/controllers/property.con
       useFactory: (listings: ListingRepository) => new GetListingUseCase(listings),
       inject: [ListingRepository],
     },
+    PrismaAdminListingRepository,
+    { provide: AdminListingRepository, useExisting: PrismaAdminListingRepository },
+    {
+      provide: ListAdminListingsUseCase,
+      useFactory: (listings: AdminListingRepository) =>
+        new ListAdminListingsUseCase(listings),
+      inject: [AdminListingRepository],
+    },
+    {
+      provide: GetAdminListingUseCase,
+      useFactory: (listings: AdminListingRepository) =>
+        new GetAdminListingUseCase(listings),
+      inject: [AdminListingRepository],
+    },
   ],
-  controllers: [PropertyController],
+  controllers: [PropertyController, AdminListingsController],
   exports: [PublishPropertyUseCase, PropertyRepository],
 })
 export class PropertyModule {}

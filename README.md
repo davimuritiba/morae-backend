@@ -254,9 +254,19 @@ Resposta `201 Created`:
   "administratorId": "77777777-7777-4777-8777-777777777777",
   "userId": "55555555-5555-4555-8555-555555555555",
   "login": "admin",
-  "permissions": []
+  "permissions": ["MODERATE_LISTINGS"],
+  "accessToken": "<JWT>",
+  "tokenType": "Bearer"
 }
 ```
+
+As permissões do administrador são incluídas no token. A consulta administrativa de anúncios exige `MODERATE_LISTINGS`; sem essa permissão, a API responde `403`. Altere `Administrator.permissions` pelo Prisma Studio e autentique-se novamente para receber um token atualizado.
+
+### `GET /admin/listings`
+
+Consulta os anúncios persistidos, com paginação de até 100 registros. Aceita `search` (título, descrição, nome/e-mail do anunciante, cidade ou bairro), `status` (`PENDING`, `IN_REVIEW`, `APPROVED` ou `REJECTED`), `page` e `limit`. Requer `Authorization: Bearer <JWT de administrador>` com `MODERATE_LISTINGS`.
+
+Cada resultado contém anúncio, imóvel, endereço, anunciante e mídias, sem expor CPF ou hash de senha. `GET /admin/listings/:listingId` consulta os detalhes do anúncio selecionado. Um ID inexistente responde `404` com `LISTING_NOT_FOUND`.
 
 ### `POST /auth/password-reset/request`
 
