@@ -40,6 +40,10 @@ function toDomainStatus(status: PrismaListingStatus): ListingStatus {
       return ListingStatus.APPROVED;
     case PrismaListingStatus.REJECTED:
       return ListingStatus.REJECTED;
+    case PrismaListingStatus.ARCHIVED:
+      return ListingStatus.ARCHIVED;
+    case PrismaListingStatus.REMOVED:
+      return ListingStatus.REMOVED;
   }
 }
 
@@ -53,6 +57,10 @@ function toPrismaStatus(status: ListingStatus): PrismaListingStatus {
       return PrismaListingStatus.APPROVED;
     case ListingStatus.REJECTED:
       return PrismaListingStatus.REJECTED;
+    case ListingStatus.ARCHIVED:
+      return PrismaListingStatus.ARCHIVED;
+    case ListingStatus.REMOVED:
+      return PrismaListingStatus.REMOVED;
   }
 }
 

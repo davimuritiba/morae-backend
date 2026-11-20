@@ -51,6 +51,8 @@ enum ListingStatus {
   IN_REVIEW
   APPROVED
   REJECTED
+  ARCHIVED
+  REMOVED
 }
 
 enum MediaType {

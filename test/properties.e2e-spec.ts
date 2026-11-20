@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
+import { AuthTokenService } from '../src/shared/infra/auth/auth-token.service.js';
 import { PrismaService } from '../src/shared/infra/database/prisma.service.js';
 import { validCpf } from './helpers/valid-cpf.js';
 import { resetDatabase } from './integration/reset-database.js';
@@ -42,6 +43,15 @@ describe('Properties endpoints (e2e)', () => {
       },
     });
     return id;
+  }
+
+  async function tokenForListingOwner(listingId: string): Promise<string> {
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { property: { select: { owner: { select: { userId: true } } } } },
+    });
+    if (!listing) throw new Error('Anúncio de teste não encontrado.');
+    return app.get(AuthTokenService).sign(listing.property.owner.userId);
   }
 
   async function createListing(input: {
@@ -194,5 +204,88 @@ describe('Properties endpoints (e2e)', () => {
       .get(`/properties/${listingId}`)
       .expect(404)
       .expect(({ body }) => expect(body.code).toBe('LISTING_NOT_FOUND'));
+  });
+
+  it('permite ao dono arquivar e reativar anúncio, retirando-o da busca enquanto arquivado', async () => {
+    const listingId = await createListing({
+      seed: 60,
+      city: 'Maceió',
+      neighborhood: 'Farol',
+      status: 'APPROVED',
+    });
+    const token = await tokenForListingOwner(listingId);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    await request(app.getHttpServer())
+      .patch(`/properties/${listingId}/status`)
+      .send({ status: 'ARCHIVED' })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .patch(`/properties/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'ARCHIVED' })
+      .expect(200)
+      .expect(({ body }) => expect(body).toMatchObject({ listingId, status: 'ARCHIVED' }));
+
+    expect((await prisma.listing.findUnique({ where: { id: listingId } }))?.status).toBe('ARCHIVED');
+    await request(app.getHttpServer()).get('/properties?location=Farol').expect(200).expect([]);
+
+    await request(app.getHttpServer())
+      .patch(`/properties/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'APPROVED' })
+      .expect(200)
+      .expect(({ body }) => expect(body.status).toBe('APPROVED'));
+
+    await request(app.getHttpServer()).get('/properties?location=Farol').expect(200).expect(({ body }) => {
+      expect(body).toHaveLength(1);
+      expect(body[0].listingId).toBe(listingId);
+    });
+  });
+
+  it('impede que outro usuário arquive anúncio alheio', async () => {
+    const listingId = await createListing({
+      seed: 70,
+      city: 'Maceió',
+      neighborhood: 'Farol',
+      status: 'APPROVED',
+    });
+    const otherUserId = await createUser(72);
+    const token = await app.get(AuthTokenService).sign(otherUserId);
+
+    await request(app.getHttpServer())
+      .patch(`/properties/${listingId}/status`)
+      .set({ Authorization: `Bearer ${token}` })
+      .send({ status: 'ARCHIVED' })
+      .expect(404)
+      .expect(({ body }) => expect(body.code).toBe('LISTING_NOT_FOUND'));
+  });
+
+  it('desativa anúncio após a confirmação do front e impede sua reativação', async () => {
+    const listingId = await createListing({
+      seed: 80,
+      city: 'Maceió',
+      neighborhood: 'Farol',
+      status: 'APPROVED',
+    });
+    const token = await tokenForListingOwner(listingId);
+    const auth = { Authorization: `Bearer ${token}` };
+
+    await request(app.getHttpServer())
+      .delete(`/properties/${listingId}`)
+      .set(auth)
+      .expect(204);
+
+    expect((await prisma.listing.findUnique({ where: { id: listingId } }))?.status).toBe('REMOVED');
+    await request(app.getHttpServer()).get(`/properties/${listingId}`).expect(404);
+    await request(app.getHttpServer()).get('/properties?location=Farol').expect(200).expect([]);
+
+    await request(app.getHttpServer())
+      .patch(`/properties/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'APPROVED' })
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('INVALID_LISTING_TRANSITION'));
   });
 });
