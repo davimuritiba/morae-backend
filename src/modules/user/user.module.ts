@@ -12,6 +12,7 @@ import { PasswordResetNotifier } from './application/ports/password-reset-notifi
 import { VerificationTokenGenerator } from './application/ports/verification-token-generator.port.js';
 import { ConfirmEmailVerificationUseCase } from './application/use-cases/confirm-email-verification/confirm-email-verification.use-case.js';
 import { GetUserByIdUseCase } from './application/use-cases/get-user-by-id/get-user-by-id.use-case.js';
+import { UpdateUserProfileUseCase } from './application/use-cases/update-user-profile/update-user-profile.use-case.js';
 import { LoginUseCase } from './application/use-cases/login/login.use-case.js';
 import { LoginAdministratorUseCase } from './application/use-cases/login-administrator/login-administrator.use-case.js';
 import { RequestPasswordResetUseCase } from './application/use-cases/request-password-reset/request-password-reset.use-case.js';
@@ -251,6 +252,15 @@ const HOUR_MS = 60 * 60 * 1000;
       provide: GetUserByIdUseCase,
       useFactory: (users: UserRepository) => new GetUserByIdUseCase(users),
       inject: [UserRepository],
+    },
+    {
+      provide: UpdateUserProfileUseCase,
+      useFactory: (
+        users: UserRepository,
+        sendEmailVerification: SendEmailVerificationUseCase,
+        logger: Logger,
+      ) => new UpdateUserProfileUseCase(users, sendEmailVerification, logger),
+      inject: [UserRepository, SendEmailVerificationUseCase, Logger],
     },
     {
       provide: LoginAdministratorUseCase,

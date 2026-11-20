@@ -1,7 +1,16 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUserId } from '../../../../../shared/presentation/decorators/current-user-id.decorator.js';
 import { JwtAuthGuard } from '../../../../../shared/presentation/guards/jwt-auth.guard.js';
 import { GetUserByIdUseCase } from '../../../application/use-cases/get-user-by-id/get-user-by-id.use-case.js';
+import { UpdateUserProfileUseCase } from '../../../application/use-cases/update-user-profile/update-user-profile.use-case.js';
+import { UpdateUserProfileDto } from '../dtos/update-user-profile.dto.js';
 import {
   GetUserByIdPresenter,
   type GetUserByIdResponse,
@@ -11,7 +20,10 @@ import {
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private readonly getUserById: GetUserByIdUseCase) {}
+  constructor(
+    private readonly getUserById: GetUserByIdUseCase,
+    private readonly updateUserProfile: UpdateUserProfileUseCase,
+  ) {}
 
   @Get('me')
   async me(@CurrentUserId() viewerId: string): Promise<GetUserByIdResponse> {
@@ -29,5 +41,20 @@ export class UsersController {
     return id === viewerId
       ? GetUserByIdPresenter.toHttp(output)
       : GetUserByIdPresenter.toPublic(output);
+  }
+
+  @Patch('me')
+  async updateMe(
+    @CurrentUserId() userId: string,
+    @Body() dto: UpdateUserProfileDto,
+  ): Promise<GetUserByIdResponse> {
+    const output = await this.updateUserProfile.execute({
+      userId,
+      name: dto.name,
+      email: dto.email,
+      cpf: dto.cpf,
+      phone: dto.phone,
+    });
+    return GetUserByIdPresenter.toHttp(output);
   }
 }

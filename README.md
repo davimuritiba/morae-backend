@@ -123,6 +123,49 @@ npm run start:prod
 
 ## Endpoints
 
+### `GET /favorites`
+
+Exige `Authorization: Bearer <accessToken>`. Lista os anúncios aprovados que o usuário autenticado salvou, mais recentes primeiro. O retorno contém `{ "items": [...] }`, com `listingId`, `propertyId`, dados de preço e características do imóvel, `location`, `media` e `favoritedAt`.
+
+### `PUT /favorites/:listingId`
+
+Exige autenticação e adiciona o anúncio aprovado aos favoritos do usuário. A operação é idempotente: repetir a chamada não cria duplicatas. Retorna `200 OK` com `{ "listingId": "...", "createdAt": "..." }`. Anúncios inexistentes ou não aprovados retornam `404 LISTING_NOT_FOUND`.
+
+### `DELETE /favorites/:listingId`
+
+Exige autenticação e remove o favorito do usuário autenticado. Retorna `204 No Content`; remover um anúncio que não está salvo não gera erro. Um UUID inválido retorna `400`.
+
+### `GET /properties?location=<termo>`
+
+Lista anúncios aprovados. O parâmetro `location` é opcional e procura, sem diferenciar maiúsculas e minúsculas, por cidade, bairro ou estado. Sem o parâmetro, retorna todos os anúncios aprovados.
+
+Resposta `200 OK` (array; valores monetários são números):
+
+```json
+[
+  {
+    "listingId": "uuid-do-anuncio",
+    "propertyId": "uuid-do-imovel",
+    "title": "Quarto próximo à UFAL",
+    "description": "Quarto mobiliado em apartamento compartilhado.",
+    "rent": 650,
+    "condominium": null,
+    "housingType": "ROOM",
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "parkingSpaces": 0,
+    "amenities": ["WIFI", "FURNISHED"],
+    "location": {
+      "city": "Maceió",
+      "neighborhood": "Clima Bom",
+      "state": "AL"
+    },
+    "media": [{ "type": "PHOTO", "url": "https://example.com/quarto.jpg", "position": 0 }],
+    "createdAt": "2026-11-19T12:00:00.000Z"
+  }
+]
+```
+
 ### `GET /users/me` e `GET /users/:id`
 
 Exigem `Authorization: Bearer <accessToken>`; sem token, `401`.
@@ -152,6 +195,14 @@ Exigem `Authorization: Bearer <accessToken>`; sem token, `401`.
 ```
 
 Se o usuário não existir, a API responde `404` com `USER_NOT_FOUND`.
+
+### `PATCH /users/me`
+
+Atualiza os dados básicos da conta autenticada. Requer `Authorization: Bearer <accessToken>`.
+Aceita um ou mais campos: `name`, `email`, `cpf` e `phone` (que pode ser `null` para remover o telefone).
+Senha e estado da conta não são editáveis por esta rota. O CPF não é devolvido na resposta.
+Quando o e-mail muda, ele volta para `emailVerified: false` e a API envia um novo link de verificação.
+Duplicidades de e-mail/CPF respondem `409`; formatos inválidos respondem `422`; corpo vazio responde `422`.
 
 ### `POST /auth/login`
 
@@ -496,7 +547,7 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 - **Regras cobertas no domínio:** CEP e estado válidos, limites de título/descrição/regras, valores de aluguel e condomínio, quantidades de quartos/banheiros/vagas, até 10 fotos e pelo menos um coabitante.
 - **Persistência:** `PrismaPropertyRepository` e `PropertyMapper` persistem e reconstroem o agregado usando Prisma/PostgreSQL. A criação usa writes aninhados para salvar residência, imóvel, coabitantes, anúncio e mídias.
 - **Testabilidade:** `InMemoryPropertyRepository` permite testar o caso de uso sem banco de dados.
-- **HTTP:** `PropertyController` expõe `POST /properties` para publicação de anúncios.
+- **HTTP:** `PropertyController` expõe `POST /properties` para publicação e `GET /properties?location=<termo>` para buscar anúncios aprovados por cidade, bairro ou estado.
 - **Schema e migration:** os modelos `Residence`, `Property`, `PropertyCohabitant`, `Listing` e `ListingMedia`, seus enums e a migration de conversão do antigo `ownerId` para coabitantes estão em `prisma/schema.prisma` e `prisma/migrations/`.
 
 **Regras de negócio já garantidas pelo domínio**
