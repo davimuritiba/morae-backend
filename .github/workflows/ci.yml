@@ -1,0 +1,71 @@
+# Lint e testes do backend: unitários, integração (Postgres) e e2e (HTTP real,
+# com os e-mails capturados pelo Mailpit).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: morae
+          POSTGRES_PASSWORD: morae
+          POSTGRES_DB: morae
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U morae -d morae"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      mailpit:
+        image: axllent/mailpit:v1.33
+        ports: ['1025:1025', '8025:8025']
+
+    # Os testes de integração e e2e usam o banco "morae_test", derivado daqui.
+    env:
+      DATABASE_URL: postgresql://morae:morae@localhost:5432/morae?schema=public
+      JWT_SECRET: segredo-do-ci-com-32-bytes-ou-mais-para-os-testes
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+      SMTP_SECURE: false
+      MAIL_FROM: 'Moraê <nao-responda@morae.local>'
+      APP_WEB_URL: http://localhost:5173
+      MAILPIT_URL: http://localhost:8025
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instala dependências
+        run: |
+          npm ci
+          npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Testes unitários
+        run: npm test
+
+      - name: Testes de integração
+        run: npm run test:int
+
+      - name: Testes e2e
+        run: npm run test:e2e
