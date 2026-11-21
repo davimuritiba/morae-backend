@@ -3,6 +3,7 @@ import { AuthTokenService } from '../../../../shared/infra/auth/auth-token.servi
 import { AuthController } from '../../presentation/http/controllers/auth.controller.js';
 import { LoginAdministratorUseCase } from '../../application/use-cases/login-administrator/login-administrator.use-case.js';
 import { LoginUseCase } from '../../application/use-cases/login/login.use-case.js';
+import { Administrator } from '../../domain/entities/administrator.entity.js';
 import { User } from '../../domain/entities/user.entity.js';
 import { InvalidCredentialsError } from '../../domain/errors/invalid-credentials.error.js';
 import { Permission } from '../../domain/enums/permission.enum.js';
@@ -20,10 +21,11 @@ describe('AuthController user login', () => {
   );
   let controller: AuthController;
   let user: User;
+  let administrators: InMemoryAdministratorRepository;
 
   beforeEach(async () => {
     users.items.splice(0);
-    const administrators = new InMemoryAdministratorRepository();
+    administrators = new InMemoryAdministratorRepository();
     user = User.create({
       name: 'Maria Silva',
       email: Email.create('maria@ufal.br'),
@@ -36,6 +38,32 @@ describe('AuthController user login', () => {
       tokenService,
       new LoginAdministratorUseCase(administrators, users, hasher),
     );
+  });
+
+  it('returns a permission-bearing bearer token for an administrator', async () => {
+    const administrator = Administrator.create({
+      userId: user.id,
+      login: 'carla',
+      passwordHash: 'hashed:senha-admin',
+      permissions: [Permission.MANAGE_USERS],
+    });
+    await administrators.save(administrator);
+
+    const response = await controller.loginAdministrator({
+      login: 'carla',
+      password: 'senha-admin',
+    });
+
+    expect(response).toMatchObject({
+      administratorId: administrator.id,
+      tokenType: 'Bearer',
+      permissions: [Permission.MANAGE_USERS],
+    });
+    await expect(tokenService.verify(response.accessToken)).resolves.toEqual({
+      userId: user.id,
+      administratorId: administrator.id,
+      permissions: [Permission.MANAGE_USERS],
+    });
   });
 
   it('returns a bearer token that identifies the authenticated user', async () => {
@@ -57,46 +85,10 @@ describe('AuthController user login', () => {
   it.each([
     { email: 'maria@ufal.br', password: 'senha-incorreta' },
     { email: 'desconhecido@ufal.br', password: 'senha-segura-123' },
-  ])(
-    'rejects invalid credentials without disclosing the account',
-    async (input) => {
-      await expect(controller.loginUser(input)).rejects.toMatchObject({
-        code: 'INVALID_CREDENTIALS',
-        message: 'Credenciais inválidas.',
-      } satisfies Partial<InvalidCredentialsError>);
-    },
-  );
-
-  it('issues an administrator bearer token with the assigned permissions', async () => {
-    const administratorLogin = {
-      execute: vi.fn().mockResolvedValue({
-        administratorId: 'admin-id',
-        userId: 'user-id',
-        login: 'admin',
-        permissions: [Permission.MANAGE_USERS, Permission.MODERATE_LISTINGS],
-      }),
-    } as unknown as LoginAdministratorUseCase;
-    const administratorController = new AuthController(
-      new LoginUseCase(users, hasher),
-      tokenService,
-      administratorLogin,
-    );
-
-    const response = await administratorController.loginAdministrator({
-      login: 'admin',
-      password: 'senha-segura-123',
-    });
-
-    expect(response).toMatchObject({
-      administratorId: 'admin-id',
-      userId: 'user-id',
-      permissions: [Permission.MANAGE_USERS, Permission.MODERATE_LISTINGS],
-      tokenType: 'Bearer',
-    });
-    await expect(tokenService.verify(response.accessToken)).resolves.toEqual({
-      userId: 'user-id',
-      administratorId: 'admin-id',
-      permissions: [Permission.MANAGE_USERS, Permission.MODERATE_LISTINGS],
-    });
+  ])('rejects invalid credentials without disclosing the account', async (input) => {
+    await expect(controller.loginUser(input)).rejects.toMatchObject({
+      code: 'INVALID_CREDENTIALS',
+      message: 'Credenciais inválidas.',
+    } satisfies Partial<InvalidCredentialsError>);
   });
 });

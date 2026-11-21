@@ -24,8 +24,6 @@ export class StudentsController {
       course: dto.course,
       period: dto.period,
       expectedGraduation: new Date(dto.expectedGraduation),
-      compatibilityAnswers: dto.compatibilityAnswers,
-      advertisesProperty: dto.advertisesProperty ?? false,
     });
 
     return RegisterStudentPresenter.toHttp(output);

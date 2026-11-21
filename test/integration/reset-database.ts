@@ -11,7 +11,7 @@ export async function resetDatabase(prisma: PrismaService): Promise<void> {
       users, students, student_profiles, property_owners, administrators,
       email_verification_tokens,
       residences, properties, property_cohabitants, listings, listing_media,
-      chats, chat_participants, messages
+      payment_transactions
     CASCADE
   `;
 }

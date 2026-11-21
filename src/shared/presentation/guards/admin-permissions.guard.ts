@@ -8,13 +8,12 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import { Permission } from '../../../modules/user/domain/enums/permission.enum.js';
 import { AuthTokenService } from '../../infra/auth/auth-token.service.js';
 import { PrismaService } from '../../infra/database/prisma.service.js';
 
 const REQUIRED_ADMIN_PERMISSION = 'requiredAdminPermission';
 
-export function RequireAdminPermission(permission: Permission) {
+export function RequireAdminPermission(permission: string) {
   return SetMetadata(REQUIRED_ADMIN_PERMISSION, permission);
 }
 
@@ -27,7 +26,7 @@ export class AdminPermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermission = this.reflector.getAllAndOverride<Permission>(
+    const requiredPermission = this.reflector.getAllAndOverride<string>(
       REQUIRED_ADMIN_PERMISSION,
       [context.getHandler(), context.getClass()],
     );
@@ -45,7 +44,6 @@ export class AdminPermissionsGuard implements CanActivate {
     if (!payload?.administratorId) {
       throw new UnauthorizedException();
     }
-
     const user = await this.prisma.user.findUnique({
       where: { id: payload.userId },
       select: { status: true },
@@ -54,10 +52,9 @@ export class AdminPermissionsGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     if (!payload.permissions?.includes(requiredPermission)) {
-      throw new ForbiddenException(
-        'Você não tem permissão para esta operação administrativa.',
-      );
+      throw new ForbiddenException('Você não tem permissão para esta operação administrativa.');
     }
+
     return true;
   }
 }

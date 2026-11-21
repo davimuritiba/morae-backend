@@ -2,10 +2,9 @@ import { Module, ValidationPipe } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { InteractionModule } from './modules/interaction/interaction.module.js';
-import { MatchingModule } from './modules/matching/matching.module.js';
-import { PropertyModule } from './modules/property/property.module.js';
 import { AuthModule } from './shared/infra/auth/auth.module.js';
+import { PaymentModule } from './modules/payment/payment.module.js';
+import { PropertyModule } from './modules/property/property.module.js';
 import { UserModule } from './modules/user/user.module.js';
 import { DatabaseModule } from './shared/infra/database/database.module.js';
 import { MailModule } from './shared/infra/mail/mail.module.js';
@@ -24,16 +23,15 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       appSecret: process.env.OBSERVE_APP_SECRET ?? '',
       serviceId: 'morae-backend',
     }),
+    AuthModule,
     DatabaseModule,
     MailModule,
     // Limite padrão por IP; as rotas sensíveis definem limites próprios com
     // @Throttle e só são limitadas onde o ThrottlerGuard é aplicado.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }]),
-    AuthModule,
     UserModule,
     PropertyModule,
-    InteractionModule,
-    MatchingModule,
+    PaymentModule,
   ],
   providers: [
     // Registrados como providers (e não em main.ts) para valerem também nos

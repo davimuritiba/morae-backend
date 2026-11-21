@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../../shared/infra/database/prisma.service.js';
 import type { Property } from '../../../domain/entities/property.entity.js';
@@ -19,6 +20,21 @@ export class PrismaPropertyRepository extends PropertyRepository {
   }
 
   async save(property: Property): Promise<void> {
-    await this.prisma.property.create({ data: PropertyMapper.toPersistence(property) });
+    await this.prisma.$transaction(async (transaction) => {
+      const propertyOwner = await transaction.propertyOwner.upsert({
+        where: { userId: property.ownerId },
+        create: {
+          id: randomUUID(),
+          user: { connect: { id: property.ownerId } },
+          createdAt: property.createdAt,
+          updatedAt: property.updatedAt,
+        },
+        update: {},
+      });
+
+      await transaction.property.create({
+        data: PropertyMapper.toPersistence(property, propertyOwner.id),
+      });
+    });
   }
 }

@@ -110,35 +110,9 @@ export class User {
     return this.#props.updatedAt;
   }
 
-  updatePersonalData(input: {
-    name?: string;
-    email?: Email;
-    cpf?: Cpf;
-    phone?: Phone | null;
-  }): void {
-    if (input.name !== undefined) {
-      this.#props.name = User.validateName(input.name);
-    }
-    if (input.email !== undefined && !this.#props.email.equals(input.email)) {
-      this.#props.email = input.email;
-      this.#props.emailVerified = false;
-    }
-    if (input.cpf !== undefined) this.#props.cpf = input.cpf;
-    if (input.phone !== undefined) this.#props.phone = input.phone;
-    this.touch();
-  }
-
   verifyEmail(): void {
     if (this.#props.emailVerified) return;
     this.#props.emailVerified = true;
-    this.touch();
-  }
-
-  changePasswordHash(passwordHash: string): void {
-    if (passwordHash.length === 0) {
-      throw new Error('passwordHash não pode ser vazio.');
-    }
-    this.#props.passwordHash = passwordHash;
     this.touch();
   }
 

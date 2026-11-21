@@ -1,46 +1,10 @@
-import { Type } from 'class-transformer';
 import {
-  IsArray,
-  IsBoolean,
-  IsEnum,
   IsInt,
   IsISO8601,
   IsOptional,
   IsString,
   MaxLength,
-  ArrayMinSize,
-  ArrayUnique,
-  ValidateNested,
 } from 'class-validator';
-
-import {
-  CleaningFrequency,
-  EnvironmentPreference,
-  LifestyleTrait,
-  OrganizationLevel,
-  PetPreference,
-  SleepTime,
-  SmokingFrequency,
-  StudyAtHome,
-  VisitorFrequency,
-} from '../../../domain/enums/student-compatibility.enum.js';
-
-export class StudentCompatibilityAnswersDto {
-  @IsEnum(SleepTime) sleepTime: SleepTime;
-  @IsEnum(StudyAtHome) studyAtHome: StudyAtHome;
-  @IsEnum(OrganizationLevel) organization: OrganizationLevel;
-  @IsEnum(VisitorFrequency) visitors: VisitorFrequency;
-  @IsEnum(SmokingFrequency) smoking: SmokingFrequency;
-  @IsEnum(PetPreference) pets: PetPreference;
-  @IsEnum(CleaningFrequency) cleaning: CleaningFrequency;
-  @IsEnum(EnvironmentPreference) environment: EnvironmentPreference;
-
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayUnique()
-  @IsEnum(LifestyleTrait, { each: true })
-  lifestyle: LifestyleTrait[];
-}
 
 export class RegisterStudentDto {
   @IsString()
@@ -79,13 +43,4 @@ export class RegisterStudentDto {
   // existem, como "2027-02-30".
   @IsISO8601({ strict: true })
   expectedGraduation: string;
-
-  @ValidateNested()
-  @Type(() => StudentCompatibilityAnswersDto)
-  compatibilityAnswers: StudentCompatibilityAnswersDto;
-
-  // Quando verdadeiro, a conta recebe também o perfil necessário para anunciar vagas.
-  @IsOptional()
-  @IsBoolean()
-  advertisesProperty?: boolean;
 }

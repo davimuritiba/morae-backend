@@ -2,10 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { rethrowUniqueViolation } from '../../../../../shared/infra/database/prisma-errors.js';
 import { PrismaTransactionContext } from '../../../../../shared/infra/database/prisma-transaction-context.js';
 import { isUuid } from '../../../../../shared/infra/database/uuid.js';
+import type {
+  AccountStatus as PrismaAccountStatus,
+  Prisma,
+} from '../../../../../shared/infra/database/generated/prisma/client.js';
 import type { User } from '../../../domain/entities/user.entity.js';
+import { AccountStatus } from '../../../domain/enums/account-status.enum.js';
 import { CpfAlreadyInUseError } from '../../../domain/errors/cpf-already-in-use.error.js';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error.js';
-import { UserRepository } from '../../../domain/repositories/user.repository.js';
+import {
+  UserRepository,
+  type AdminUserPage,
+  type AdminUserQuery,
+  type AdminUserRecord,
+} from '../../../domain/repositories/user.repository.js';
 import type { Cpf } from '../../../domain/value-objects/cpf.vo.js';
 import type { Email } from '../../../domain/value-objects/email.vo.js';
 import { UserMapper } from '../mappers/user.mapper.js';
@@ -15,6 +25,54 @@ const UNIQUE_ERRORS = {
   users_email_key: () => new EmailAlreadyInUseError(),
   users_cpf_key: () => new CpfAlreadyInUseError(),
 };
+
+const ADMIN_USER_INCLUDE = {
+  student: {
+    select: { course: true, period: true, verificationStatus: true },
+  },
+  propertyOwner: {
+    select: { verificationStatus: true },
+  },
+} satisfies Prisma.UserInclude;
+
+type AdminUserRow = Prisma.UserGetPayload<{
+  include: typeof ADMIN_USER_INCLUDE;
+}>;
+
+const accountStatusToPrisma: Record<AccountStatus, PrismaAccountStatus> = {
+  [AccountStatus.ACTIVE]: 'ACTIVE',
+  [AccountStatus.SUSPENDED]: 'SUSPENDED',
+  [AccountStatus.DEACTIVATED]: 'DEACTIVATED',
+};
+
+const accountStatusFromPrisma: Record<PrismaAccountStatus, AccountStatus> = {
+  ACTIVE: AccountStatus.ACTIVE,
+  SUSPENDED: AccountStatus.SUSPENDED,
+  DEACTIVATED: AccountStatus.DEACTIVATED,
+};
+
+function toAdminRecord(row: AdminUserRow): AdminUserRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    photoUrl: row.photoUrl,
+    emailVerified: row.emailVerified,
+    status: accountStatusFromPrisma[row.status],
+    createdAt: row.createdAt,
+    student: row.student
+      ? {
+          course: row.student.course,
+          period: row.student.period,
+          verificationStatus: row.student.verificationStatus,
+        }
+      : null,
+    propertyOwner: row.propertyOwner
+      ? { verificationStatus: row.propertyOwner.verificationStatus }
+      : null,
+  };
+}
 
 @Injectable()
 export class PrismaUserRepository extends UserRepository {
@@ -27,6 +85,45 @@ export class PrismaUserRepository extends UserRepository {
       orderBy: { createdAt: 'asc' },
     });
     return rows.map((row) => UserMapper.toDomain(row));
+  }
+
+  async findAdminPage(query: AdminUserQuery): Promise<AdminUserPage> {
+    const where: Prisma.UserWhereInput = {};
+    if (query.status) where.status = accountStatusToPrisma[query.status];
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { email: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [rows, total] = await Promise.all([
+      this.db.client.user.findMany({
+        where,
+        include: ADMIN_USER_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+      }),
+      this.db.client.user.count({ where }),
+    ]);
+
+    return {
+      items: rows.map(toAdminRecord),
+      total,
+      page: query.page,
+      limit: query.limit,
+    };
+  }
+
+  async findAdminById(id: string): Promise<AdminUserRecord | null> {
+    if (!isUuid(id)) return null;
+
+    const row = await this.db.client.user.findUnique({
+      where: { id },
+      include: ADMIN_USER_INCLUDE,
+    });
+    return row ? toAdminRecord(row) : null;
   }
 
   async findById(id: string): Promise<User | null> {

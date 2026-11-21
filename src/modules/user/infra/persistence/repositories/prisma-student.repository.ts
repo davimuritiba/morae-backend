@@ -51,17 +51,13 @@ export class PrismaStudentRepository extends StudentRepository {
     return row !== null;
   }
 
-  // Grava Student, perfil e respostas em um upsert com relações aninhadas.
-  // O Prisma executa tudo numa transação.
+  // Grava o agregado num único upsert com o perfil aninhado: o Prisma executa
+  // tudo numa transação, então Student e StudentProfile nunca ficam
+  // dessincronizados.
   async save(student: Student): Promise<void> {
     const data = StudentMapper.toPersistence(student);
     const profile = student.profile
       ? StudentMapper.profileToPersistence(student.profile)
-      : null;
-    const compatibilityAnswers = student.compatibilityAnswers
-      ? StudentMapper.compatibilityAnswersToPersistence(
-          student.compatibilityAnswers,
-        )
       : null;
 
     try {
@@ -70,22 +66,11 @@ export class PrismaStudentRepository extends StudentRepository {
         create: {
           ...data,
           ...(profile && { profile: { create: profile } }),
-          ...(compatibilityAnswers && {
-            compatibilityAnswers: { create: compatibilityAnswers },
-          }),
         },
         update: {
           ...data,
           ...(profile && {
             profile: { upsert: { create: profile, update: profile } },
-          }),
-          ...(compatibilityAnswers && {
-            compatibilityAnswers: {
-              upsert: {
-                create: compatibilityAnswers,
-                update: compatibilityAnswers,
-              },
-            },
           }),
         },
       });

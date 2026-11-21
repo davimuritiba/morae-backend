@@ -2,7 +2,6 @@ import type {
   Prisma,
   Student as PrismaStudent,
   StudentProfile as PrismaStudentProfile,
-  StudentCompatibilityAnswers as PrismaStudentCompatibilityAnswers,
 } from '../../../../../shared/infra/database/generated/prisma/client.js';
 import {
   verificationStatusToDomain,
@@ -14,28 +13,16 @@ import {
   type WeeklySchedule,
 } from '../../../domain/entities/student-profile.entity.js';
 import { Student } from '../../../domain/entities/student.entity.js';
-import { StudentCompatibilityAnswers } from '../../../domain/entities/student-compatibility-answers.entity.js';
-import {
-  CleaningFrequency,
-  EnvironmentPreference,
-  LifestyleTrait,
-  OrganizationLevel,
-  PetPreference,
-  SleepTime,
-  SmokingFrequency,
-  StudyAtHome,
-  VisitorFrequency,
-} from '../../../domain/enums/student-compatibility.enum.js';
 import { AcademicPeriod } from '../../../domain/value-objects/academic-period.vo.js';
 import { BudgetRange } from '../../../domain/value-objects/budget-range.vo.js';
 import { EnrollmentNumber } from '../../../domain/value-objects/enrollment-number.vo.js';
 import { PreferenceLevel } from '../../../domain/value-objects/preference-level.vo.js';
 import { TimeSlot } from '../../../domain/value-objects/time-slot.vo.js';
 
-// O Student é um agregado: toda leitura inclui o perfil e as respostas de convivência.
+// O Student é um agregado: toda leitura traz o perfil junto. O repositório
+// usa este mesmo include nas consultas.
 export const studentInclude = {
   profile: true,
-  compatibilityAnswers: true,
 } as const satisfies Prisma.StudentInclude;
 
 export type PrismaStudentWithProfile = Prisma.StudentGetPayload<{
@@ -58,9 +45,6 @@ export class StudentMapper {
       expectedGraduation: raw.expectedGraduation,
       verificationStatus: verificationStatusToDomain[raw.verificationStatus],
       profile: raw.profile ? StudentMapper.profileToDomain(raw.profile) : null,
-      compatibilityAnswers: raw.compatibilityAnswers
-        ? StudentMapper.compatibilityAnswersToDomain(raw.compatibilityAnswers)
-        : null,
       createdAt: raw.createdAt,
       updatedAt: raw.updatedAt,
     });
@@ -80,40 +64,6 @@ export class StudentMapper {
       createdAt: student.createdAt,
       updatedAt: student.updatedAt,
     };
-  }
-
-  static compatibilityAnswersToPersistence(
-    answers: StudentCompatibilityAnswers,
-  ): Prisma.StudentCompatibilityAnswersCreateWithoutStudentInput {
-    return {
-      sleepTime: answers.sleepTime,
-      studyAtHome: answers.studyAtHome,
-      organization: answers.organization,
-      visitors: answers.visitors,
-      smoking: answers.smoking,
-      pets: answers.pets,
-      cleaning: answers.cleaning,
-      environment: answers.environment,
-      lifestyle: [...answers.lifestyle],
-      updatedAt: answers.updatedAt,
-    };
-  }
-
-  private static compatibilityAnswersToDomain(
-    raw: PrismaStudentCompatibilityAnswers,
-  ): StudentCompatibilityAnswers {
-    return StudentCompatibilityAnswers.restore({
-      sleepTime: raw.sleepTime as SleepTime,
-      studyAtHome: raw.studyAtHome as StudyAtHome,
-      organization: raw.organization as OrganizationLevel,
-      visitors: raw.visitors as VisitorFrequency,
-      smoking: raw.smoking as SmokingFrequency,
-      pets: raw.pets as PetPreference,
-      cleaning: raw.cleaning as CleaningFrequency,
-      environment: raw.environment as EnvironmentPreference,
-      lifestyle: raw.lifestyle as LifestyleTrait[],
-      updatedAt: raw.updatedAt,
-    });
   }
 
   // Sem studentId: o perfil é gravado aninhado no Student (nested write), e o

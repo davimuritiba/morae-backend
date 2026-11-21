@@ -1,18 +1,14 @@
-import type { UseCase } from '../../../../../shared/application/use-case.js';
+import { AdminListingRepository } from '../../../domain/repositories/admin-listing.repository.js';
 import { ListingNotFoundError } from '../../../domain/errors/listing-not-found.error.js';
-import type {
-  AdminListingRecord,
-  AdminListingRepository,
-} from '../../../domain/repositories/admin-listing.repository.js';
 
-export class GetAdminListingUseCase
-  implements UseCase<string, AdminListingRecord>
-{
+export class GetAdminListingUseCase {
   constructor(private readonly listings: AdminListingRepository) {}
 
-  async execute(listingId: string): Promise<AdminListingRecord> {
+  async execute(listingId: string) {
     const listing = await this.listings.findById(listingId);
-    if (!listing) throw new ListingNotFoundError();
+    if (!listing) {
+      throw new ListingNotFoundError();
+    }
     return listing;
   }
 }

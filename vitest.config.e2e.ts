@@ -12,10 +12,7 @@ export default defineConfig({
     root: './',
     include: ['**/*.e2e-spec.ts'],
     globalSetup: ['./test/integration/global-setup.ts'],
-    env: {
-      DATABASE_URL: testDatabaseUrl(),
-      JWT_SECRET: process.env['JWT_SECRET'] ?? 'segredo-dos-testes-e2e',
-    },
+    env: { DATABASE_URL: testDatabaseUrl() },
     fileParallelism: false,
   },
 });

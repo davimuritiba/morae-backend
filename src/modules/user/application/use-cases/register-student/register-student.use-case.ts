@@ -2,14 +2,11 @@ import type { Logger } from '../../../../../shared/application/logger.js';
 import type { UnitOfWork } from '../../../../../shared/application/unit-of-work.js';
 import type { UseCase } from '../../../../../shared/application/use-case.js';
 import { Student } from '../../../domain/entities/student.entity.js';
-import { StudentCompatibilityAnswers } from '../../../domain/entities/student-compatibility-answers.entity.js';
 import { User } from '../../../domain/entities/user.entity.js';
 import { CpfAlreadyInUseError } from '../../../domain/errors/cpf-already-in-use.error.js';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error.js';
 import { EnrollmentNumberAlreadyInUseError } from '../../../domain/errors/enrollment-number-already-in-use.error.js';
 import type { StudentRepository } from '../../../domain/repositories/student.repository.js';
-import type { PropertyOwnerRepository } from '../../../domain/repositories/property-owner.repository.js';
-import { PropertyOwner } from '../../../domain/entities/property-owner.entity.js';
 import type { UserRepository } from '../../../domain/repositories/user.repository.js';
 import { AcademicPeriod } from '../../../domain/value-objects/academic-period.vo.js';
 import { Cpf } from '../../../domain/value-objects/cpf.vo.js';
@@ -32,7 +29,6 @@ export class RegisterStudentUseCase implements UseCase<
   constructor(
     private readonly users: UserRepository,
     private readonly students: StudentRepository,
-    private readonly propertyOwners: PropertyOwnerRepository,
     private readonly hasher: Hasher,
     private readonly unitOfWork: UnitOfWork,
     private readonly sendEmailVerification: SendEmailVerificationUseCase,
@@ -79,19 +75,10 @@ export class RegisterStudentUseCase implements UseCase<
       expectedGraduation: input.expectedGraduation,
     });
 
-    student.defineCompatibilityAnswers(
-      StudentCompatibilityAnswers.create(input.compatibilityAnswers),
-    );
-
-    const propertyOwner = input.advertisesProperty
-      ? PropertyOwner.create({ userId: user.id })
-      : null;
-
-    // 4. Persistência atômica: conta, estudante e, para ofertadores, perfil de proprietário.
+    // 4. Persistência atômica: nunca fica um User sem o Student, nem o contrário.
     await this.unitOfWork.run(async () => {
       await this.users.save(user);
       await this.students.save(student);
-      if (propertyOwner) await this.propertyOwners.save(propertyOwner);
     });
 
     // 5. E-mail de verificação. O cadastro já está gravado: uma falha no
@@ -105,10 +92,6 @@ export class RegisterStudentUseCase implements UseCase<
       );
     }
 
-    return {
-      userId: user.id,
-      studentId: student.id,
-      ...(propertyOwner && { propertyOwnerId: propertyOwner.id }),
-    };
+    return { userId: user.id, studentId: student.id };
   }
 }

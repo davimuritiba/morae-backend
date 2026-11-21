@@ -17,9 +17,6 @@ export interface DomainErrorResponse {
 // Um erro novo que siga a convenção já cai no status certo sem mexer aqui.
 export function statusForDomainError(code: string): HttpStatus {
   if (code === 'INVALID_CREDENTIALS') return HttpStatus.UNAUTHORIZED;
-  if (code === 'EMAIL_NOT_VERIFIED' || code.endsWith('_ACCESS_DENIED')) {
-    return HttpStatus.FORBIDDEN;
-  }
   if (code.endsWith('_NOT_FOUND')) return HttpStatus.NOT_FOUND;
   // Duplicidade e transição de estado inválida conflitam com o que já existe.
   if (code.endsWith('_ALREADY_IN_USE') || code.endsWith('_TRANSITION')) {

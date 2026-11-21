@@ -5,7 +5,6 @@ import { InvalidCourseError } from '../errors/invalid-course.error.js';
 import { InvalidExpectedGraduationError } from '../errors/invalid-expected-graduation.error.js';
 import type { AcademicPeriod } from '../value-objects/academic-period.vo.js';
 import type { EnrollmentNumber } from '../value-objects/enrollment-number.vo.js';
-import type { StudentCompatibilityAnswers } from './student-compatibility-answers.entity.js';
 import {
   StudentProfile,
   type StudentProfileInput,
@@ -21,7 +20,6 @@ export interface StudentProps {
   expectedGraduation: Date;
   verificationStatus: VerificationStatus;
   profile: StudentProfile | null;
-  compatibilityAnswers: StudentCompatibilityAnswers | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,7 +38,7 @@ export interface AcademicInfo {
   expectedGraduation: Date;
 }
 
-// Student é a raiz do agregado: perfil acadêmico e respostas de convivência ficam sob este agregado.
+// Student é a raiz do agregado: o StudentProfile só é criado/alterado por aqui.
 export class Student {
   // Campos privados de verdade (#): serializar a entidade não expõe os dados.
   readonly #id: string;
@@ -60,7 +58,6 @@ export class Student {
       ...Student.validateAcademicInfo(input),
       verificationStatus: VerificationStatus.PENDING,
       profile: null,
-      compatibilityAnswers: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -102,10 +99,6 @@ export class Student {
     return this.#props.profile;
   }
 
-  get compatibilityAnswers(): StudentCompatibilityAnswers | null {
-    return this.#props.compatibilityAnswers;
-  }
-
   get createdAt(): Date {
     return this.#props.createdAt;
   }
@@ -127,11 +120,6 @@ export class Student {
     this.#props.profile = this.#props.profile
       ? this.#props.profile.withChanges(input)
       : StudentProfile.create(this.#id, input);
-    this.touch();
-  }
-
-  defineCompatibilityAnswers(answers: StudentCompatibilityAnswers): void {
-    this.#props.compatibilityAnswers = answers;
     this.touch();
   }
 

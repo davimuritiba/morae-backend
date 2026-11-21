@@ -11,7 +11,6 @@ import { SendEmailVerificationUseCase } from '../../../application/use-cases/sen
 import { EnrollmentNumberAlreadyInUseError } from '../../../domain/errors/enrollment-number-already-in-use.error.js';
 import { PrismaEmailVerificationTokenRepository } from '../../../infra/persistence/repositories/prisma-email-verification-token.repository.js';
 import { PrismaStudentRepository } from '../../../infra/persistence/repositories/prisma-student.repository.js';
-import { PrismaPropertyOwnerRepository } from '../../../infra/persistence/repositories/prisma-property-owner.repository.js';
 import { PrismaUserRepository } from '../../../infra/persistence/repositories/prisma-user.repository.js';
 import { CryptoVerificationTokenGenerator } from '../../../infra/services/crypto-verification-token-generator.js';
 import { FakeEmailVerificationNotifier } from '../../fakes/fake-email-verification-notifier.js';
@@ -50,17 +49,6 @@ function makeInput(
     course: 'Ciência da Computação',
     period: 3,
     expectedGraduation: new Date('2027-12-15'),
-    compatibilityAnswers: {
-      sleepTime: 'FROM_23_TO_01',
-      studyAtHome: 'SOMETIMES',
-      organization: 'VERY_ORGANIZED',
-      visitors: 'SOMETIMES',
-      smoking: 'NO',
-      pets: 'NO',
-      cleaning: 'WEEKLY',
-      environment: 'QUIET',
-      lifestyle: ['CALM', 'STUDIOUS'],
-    },
     ...overrides,
   };
 }
@@ -87,7 +75,6 @@ describe('RegisterStudentUseCase com Prisma (integração)', () => {
     return new RegisterStudentUseCase(
       users,
       students,
-      new PrismaPropertyOwnerRepository(context),
       hasher,
       unitOfWork,
       sendEmailVerification,
