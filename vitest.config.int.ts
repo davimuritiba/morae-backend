@@ -12,7 +12,11 @@ export default defineConfig({
     root: './',
     include: ['**/*.int-spec.ts'],
     globalSetup: ['./test/integration/global-setup.ts'],
-    env: { DATABASE_URL: testDatabaseUrl() },
+    env: {
+      DATABASE_URL: testDatabaseUrl(),
+      JWT_SECRET:
+        process.env['JWT_SECRET'] ?? 'segredo-dos-testes-de-integracao',
+    },
     // Todos os arquivos usam o mesmo banco e o limpam entre os testes.
     fileParallelism: false,
   },

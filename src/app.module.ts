@@ -2,9 +2,11 @@ import { Module, ValidationPipe } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { AuthModule } from './shared/infra/auth/auth.module.js';
+import { InteractionModule } from './modules/interaction/interaction.module.js';
+import { MatchingModule } from './modules/matching/matching.module.js';
 import { PaymentModule } from './modules/payment/payment.module.js';
 import { PropertyModule } from './modules/property/property.module.js';
+import { AuthModule } from './shared/infra/auth/auth.module.js';
 import { UserModule } from './modules/user/user.module.js';
 import { DatabaseModule } from './shared/infra/database/database.module.js';
 import { MailModule } from './shared/infra/mail/mail.module.js';
@@ -31,6 +33,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }]),
     UserModule,
     PropertyModule,
+    InteractionModule,
+    MatchingModule,
     PaymentModule,
   ],
   providers: [

@@ -10,6 +10,7 @@ import {
   verificationTokenFrom,
   waitForMessages,
 } from './integration/mailpit.js';
+import { compatibilityAnswers } from './helpers/compatibility-answers.js';
 import { resetDatabase } from './integration/reset-database.js';
 
 const EMAIL = 'maria@ufal.br';
@@ -23,6 +24,7 @@ const studentBody = {
   course: 'Ciência da Computação',
   period: 3,
   expectedGraduation: '2027-12-15',
+  compatibilityAnswers,
 };
 
 // Fluxo completo: o cadastro envia o e-mail de verdade para o Mailpit, o

@@ -7,18 +7,22 @@ import { InMemoryUserRepository } from '../../../infra/persistence/in-memory/in-
 describe('ListAdminUsersUseCase', () => {
   it('searches and paginates registered users', async () => {
     const users = new InMemoryUserRepository();
-    await users.save(User.create({
-      name: 'Maria Silva',
-      email: Email.create('maria@ufal.br'),
-      cpf: Cpf.create('529.982.247-25'),
-      passwordHash: 'hashed:password',
-    }));
-    await users.save(User.create({
-      name: 'João Souza',
-      email: Email.create('joao@ufal.br'),
-      cpf: Cpf.create('111.444.777-35'),
-      passwordHash: 'hashed:password',
-    }));
+    await users.save(
+      User.create({
+        name: 'Maria Silva',
+        email: Email.create('maria@ufal.br'),
+        cpf: Cpf.create('529.982.247-25'),
+        passwordHash: 'hashed:password',
+      }),
+    );
+    await users.save(
+      User.create({
+        name: 'João Souza',
+        email: Email.create('joao@ufal.br'),
+        cpf: Cpf.create('111.444.777-35'),
+        passwordHash: 'hashed:password',
+      }),
+    );
     const sut = new ListAdminUsersUseCase(users);
 
     await expect(

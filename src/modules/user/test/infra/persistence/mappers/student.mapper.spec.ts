@@ -51,12 +51,17 @@ function withProfile(student: Student): Student {
 function toRow(student: Student): PrismaStudentWithProfile {
   const profile = student.profile;
   if (!profile) {
-    return { ...StudentMapper.toPersistence(student), profile: null };
+    return {
+      ...StudentMapper.toPersistence(student),
+      profile: null,
+      compatibilityAnswers: null,
+    };
   }
 
   const data = StudentMapper.profileToPersistence(profile);
   return {
     ...StudentMapper.toPersistence(student),
+    compatibilityAnswers: null,
     profile: {
       id: data.id as string,
       // Preenchido pelo Prisma no nested write.
@@ -177,6 +182,7 @@ describe('StudentMapper', () => {
   it('converte Decimal do banco em number', () => {
     const row = {
       ...StudentMapper.toPersistence(makeStudent()),
+      compatibilityAnswers: null,
       profile: makeProfileRow({ income: new Prisma.Decimal('1234.56') }),
     };
 
@@ -190,6 +196,7 @@ describe('StudentMapper', () => {
   it('ignora chaves da agenda que não são dias da semana', () => {
     const row = {
       ...StudentMapper.toPersistence(makeStudent()),
+      compatibilityAnswers: null,
       profile: makeProfileRow({
         schedule: {
           FUNDAY: [{ start: '08:00', end: '09:00' }],
@@ -210,6 +217,7 @@ describe('StudentMapper', () => {
   ])('rejeita horário corrompido na agenda: %j', (schedule) => {
     const row = {
       ...StudentMapper.toPersistence(makeStudent()),
+      compatibilityAnswers: null,
       profile: makeProfileRow({ schedule }),
     };
 

@@ -15,41 +15,11 @@ const adminPasswordHash = await argon2.hash('Admin@123');
 const passwordHash = await argon2.hash('senha-segura-123');
 
 const users = [
-  [
-    '11111111-1111-4111-8111-111111111111',
-    'Mariana Albuquerque',
-    'mariana.albuquerque@example.com',
-    '52998224725',
-    '82999990001',
-  ],
-  [
-    '22222222-2222-4222-8222-222222222222',
-    'Ana Beatriz Lima',
-    'ana.lima@example.com',
-    '11144477735',
-    '82999990002',
-  ],
-  [
-    '33333333-3333-4333-8333-333333333333',
-    'Lucas Henrique Santos',
-    'lucas.santos@example.com',
-    '16899535009',
-    '82999990003',
-  ],
-  [
-    '44444444-4444-4444-8444-444444444444',
-    'Sofia Carvalho Mendes',
-    'sofia.mendes@example.com',
-    '93541134780',
-    '82999990004',
-  ],
-  [
-    '55555555-5555-4555-8555-555555555555',
-    'Admin',
-    'Admin@Morae.com',
-    '12345678901',
-    '82999990005',
-  ],
+  ['11111111-1111-4111-8111-111111111111', 'Mariana Albuquerque', 'mariana.albuquerque@example.com', '52998224725', '82999990001'],
+  ['22222222-2222-4222-8222-222222222222', 'Ana Beatriz Lima', 'ana.lima@example.com', '11144477735', '82999990002'],
+  ['33333333-3333-4333-8333-333333333333', 'Lucas Henrique Santos', 'lucas.santos@example.com', '16899535009', '82999990003'],
+  ['44444444-4444-4444-8444-444444444444', 'Sofia Carvalho Mendes', 'sofia.mendes@example.com', '93541134780', '82999990004'],
+  ['55555555-5555-4555-8555-555555555555', 'Admin', 'admin@morae.com', '39053344705', '82999990005'],
 ];
 
 const students = [
