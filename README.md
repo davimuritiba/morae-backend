@@ -4,6 +4,8 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
 
 > **Situação em 20/11/2026:** cadastro e autenticação de estudantes, publicação de imóveis/vagas e gerenciamento administrativo de contas estão conectados ao PostgreSQL. Os anúncios são enviados para análise e suas imagens ficam em armazenamento local configurável.
 
+> **Autenticação:** o cadastro e login de usuários, a verificação de e-mail e a redefinição de senha por link enviado por e-mail estão disponíveis. O fluxo de redefinição usa tokens de uso único, armazenados como hash e com expiração configurável.
+
 ## Stack
 
 | Item                  | Tecnologia                                      |
@@ -54,8 +56,9 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
    | `SMTP_SECURE`                  | não         | `true` para TLS direto (porta 465). Padrão: `false`.                                                                                                     |
    | `SMTP_USER` / `SMTP_PASSWORD`  | não         | Credenciais do SMTP. O Mailpit não exige.                                                                                                                |
    | `MAIL_FROM`                    | **sim**     | Remetente dos e-mails, ex.: `"Moraê <nao-responda@morae.local>"`.                                                                                        |
-   | `APP_WEB_URL`                  | **sim**     | Endereço do front-end. O link de verificação é `<APP_WEB_URL>/verificar-email?token=...`.                                                                |
-   | `EMAIL_VERIFICATION_TTL_HOURS` | não         | Validade do link de verificação, em horas. Padrão: `24`.                                                                                                 |
+   | `APP_WEB_URL`                  | **sim**     | Endereço do front-end; usado nos links de verificação e redefinição de senha.                                                                           |
+   | `EMAIL_VERIFICATION_TTL_HOURS` | não         | Validade do link de verificação, em horas. Padrão: `24`.                                                                                                |
+   | `PASSWORD_RESET_TTL_MINUTES`   | não         | Validade do link de redefinição de senha, em minutos. Padrão: `30`.                                                                                    |
 
    O `.env` está no `.gitignore`. **Nunca** versione credenciais. Os valores do `.env.example` já funcionam com o Docker Compose do projeto.
 
@@ -105,7 +108,7 @@ Não edite uma migration que já foi aplicada. Para corrigir algo, crie uma nova
 
 ## Executando
 
-O `.env` é carregado automaticamente pelo `src/main.ts`. Na subida, a aplicação se conecta ao banco e falha logo se ele estiver fora do ar ou se faltar alguma variável obrigatória (`DATABASE_URL`, as de SMTP, `MAIL_FROM` ou `APP_WEB_URL`).
+O `.env` é carregado automaticamente pelo `src/main.ts`. Na subida, a aplicação se conecta ao banco e falha logo se ele estiver fora do ar ou se faltar alguma variável obrigatória (`DATABASE_URL`, as de SMTP, `MAIL_FROM`, `APP_WEB_URL` ou `JWT_SECRET`).
 
 Desenvolvimento, com recarga automática:
 
@@ -125,11 +128,70 @@ npm run start:prod
 
 ## Endpoints
 
-### `GET /users/:id`
+### `GET /favorites`
 
-Consulta os dados públicos de um usuário pelo UUID.
+Exige `Authorization: Bearer <accessToken>`. Lista os anúncios aprovados que o usuário autenticado salvou, mais recentes primeiro. O retorno contém `{ "items": [...] }`, com `listingId`, `propertyId`, dados de preço e características do imóvel, `location`, `media` e `favoritedAt`.
 
-Resposta `200 OK`:
+### `PUT /favorites/:listingId`
+
+Exige autenticação e adiciona o anúncio aprovado aos favoritos do usuário. A operação é idempotente: repetir a chamada não cria duplicatas. Retorna `200 OK` com `{ "listingId": "...", "createdAt": "..." }`. Anúncios inexistentes ou não aprovados retornam `404 LISTING_NOT_FOUND`.
+
+### `DELETE /favorites/:listingId`
+
+Exige autenticação e remove o favorito do usuário autenticado. Retorna `204 No Content`; remover um anúncio que não está salvo não gera erro. Um UUID inválido retorna `400`.
+
+### `PATCH /properties/:listingId/status`
+
+Exige `Authorization: Bearer <accessToken>` do proprietário do anúncio. Aceita `{ "status": "ARCHIVED" }` para arquivar um anúncio aprovado ou `{ "status": "APPROVED" }` para reativar um arquivado. Retorna `200 OK` com o identificador e o novo status. Apenas o dono pode alterar o anúncio; um anúncio inexistente ou de outro usuário retorna `404`. Transições inválidas retornam `409 INVALID_LISTING_TRANSITION`.
+
+### `DELETE /properties/:listingId`
+
+Exige autenticação do dono do anúncio. Desativa o anúncio com status `REMOVED`, preservando o histórico e os dados associados; ele deixa de aparecer na busca e nos detalhes públicos e não pode ser reativado. Retorna `204 No Content`. O front deve chamar essa rota somente depois da confirmação do usuário.
+
+### `GET /properties`
+
+Lista anúncios aprovados e aceita filtros combináveis, todos opcionais:
+
+- `location`: procura, sem diferenciar maiúsculas e minúsculas, por cidade, bairro ou estado.
+- `maxRent`: valor máximo do aluguel, em reais.
+- `housingType`: `REPUBLIC`, `ROOM`, `APARTMENT` ou `HOUSE`. `REPUBLIC` também inclui anúncios do tipo `ROOM`, seguindo a categoria República mostrada no frontend.
+- `minBedrooms`: quantidade mínima de quartos (inclui anúncios com essa quantidade ou mais).
+- `sortBy`: `newest` (padrão), `rent_asc` (menor aluguel primeiro) ou `rent_desc` (maior aluguel primeiro). Empates são ordenados pela data de criação e pelo identificador do anúncio.
+
+Exemplo: `GET /properties?location=Farol&maxRent=800&housingType=ROOM&minBedrooms=1&sortBy=rent_asc`. Todos os anúncios retornados continuam restritos aos aprovados.
+
+Resposta `200 OK` (array; valores monetários são números):
+
+```json
+[
+  {
+    "listingId": "uuid-do-anuncio",
+    "propertyId": "uuid-do-imovel",
+    "title": "Quarto próximo à UFAL",
+    "description": "Quarto mobiliado em apartamento compartilhado.",
+    "rent": 650,
+    "condominium": null,
+    "housingType": "ROOM",
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "parkingSpaces": 0,
+    "amenities": ["WIFI", "FURNISHED"],
+    "location": {
+      "city": "Maceió",
+      "neighborhood": "Clima Bom",
+      "state": "AL"
+    },
+    "media": [{ "type": "PHOTO", "url": "https://example.com/quarto.jpg", "position": 0 }],
+    "createdAt": "2026-11-19T12:00:00.000Z"
+  }
+]
+```
+
+### `GET /users/me` e `GET /users/:id`
+
+Exigem `Authorization: Bearer <accessToken>`; sem token, `401`.
+
+`GET /users/me`, ou `GET /users/:id` com o próprio id, devolve os dados completos:
 
 ```json
 {
@@ -143,11 +205,29 @@ Resposta `200 OK`:
 }
 ```
 
+`GET /users/:id` de outra pessoa devolve só o perfil público:
+
+```json
+{
+  "userId": "7a1c2e9d-4b3f-4e8a-9c2d-1f0e3b4a5c6d",
+  "name": "Bruno Costa",
+  "photoUrl": null
+}
+```
+
 Se o usuário não existir, a API responde `404` com `USER_NOT_FOUND`.
+
+### `PATCH /users/me`
+
+Atualiza os dados básicos da conta autenticada. Requer `Authorization: Bearer <accessToken>`.
+Aceita um ou mais campos: `name`, `email`, `cpf` e `phone` (que pode ser `null` para remover o telefone).
+Senha e estado da conta não são editáveis por esta rota. O CPF não é devolvido na resposta.
+Quando o e-mail muda, ele volta para `emailVerified: false` e a API envia um novo link de verificação.
+Duplicidades de e-mail/CPF respondem `409`; formatos inválidos respondem `422`; corpo vazio responde `422`.
 
 ### `POST /auth/login`
 
-Autentica um usuário ativo e emite um token JWT Bearer válido pelo período definido em `JWT_EXPIRES_IN_MINUTES`.
+Autentica um usuário ativo e emite um token de acesso (JWT), válido por `JWT_EXPIRES_IN_MINUTES` (60 por padrão). Envie-o no header `Authorization: Bearer <accessToken>` das rotas protegidas.
 
 Corpo da requisição:
 
@@ -166,12 +246,14 @@ Resposta `201 Created`:
   "name": "Maria Silva",
   "email": "maria@ufal.br",
   "status": "ACTIVE",
-  "accessToken": "<JWT>",
+  "accessToken": "eyJhbGciOi...",
   "tokenType": "Bearer"
 }
 ```
 
 Credenciais incorretas ou conta suspensa/desativada respondem `401` com `INVALID_CREDENTIALS`.
+
+Cada conta aceita até 10 tentativas a cada 15 minutos por IP; depois disso, a API responde `429`. O limite também vale para `POST /auth/admin/login`. Como a contagem é por conta e IP, alunos na mesma rede da UFAL não bloqueiam uns aos outros.
 
 ### `POST /properties`
 
@@ -253,7 +335,7 @@ Resposta `201 Created`:
   "administratorId": "77777777-7777-4777-8777-777777777777",
   "userId": "55555555-5555-4555-8555-555555555555",
   "login": "admin",
-  "permissions": ["MANAGE_USERS"],
+  "permissions": ["MODERATE_LISTINGS"],
   "accessToken": "<JWT>",
   "tokenType": "Bearer"
 }
@@ -299,9 +381,50 @@ Consulta os anúncios de imóveis e vagas persistidos no banco. Requer `Authoriz
 
 Cada resultado inclui dados do anúncio, endereço, imóvel, anunciante e mídias, sem expor CPF ou credenciais. A interface administrativa usa `GET /admin/listings/:listingId` para carregar a consulta detalhada do anúncio selecionado. Anúncio inexistente responde `404` com `LISTING_NOT_FOUND`.
 
+### `POST /auth/password-reset/request`
+
+Solicita por e-mail um link para redefinir a senha da conta.
+
+```json
+{ "email": "maria@ufal.br" }
+```
+
+Responde sempre `202 Accepted`, sem corpo, exista ou não uma conta com o e-mail. O envio acontece em segundo plano para evitar revelar quais endereços estão cadastrados. O limite é de 3 solicitações a cada 15 minutos por IP. O link abre `/redefinir-senha?token=...`, expira em 30 minutos por padrão e um novo pedido invalida links anteriores.
+
+### `POST /auth/password-reset/confirm`
+
+Altera a senha com o token recebido por e-mail. A senha e sua confirmação devem ter entre 8 e 128 caracteres.
+
+```json
+{
+  "token": "<token do link>",
+  "password": "senha-nova-segura",
+  "passwordConfirmation": "senha-nova-segura"
+}
+```
+
+Responde `204 No Content` quando a senha é alterada. Token inexistente, expirado ou já usado e senhas diferentes respondem `422`. O token é consumido junto da alteração da senha em uma transação e não pode ser reutilizado.
+
 ### `POST /students`
 
-Cadastra um estudante, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`, e um link de verificação é enviado para o e-mail informado. Se o envio do e-mail falhar, o cadastro continua valendo: o erro vai para o log e o usuário pode pedir o reenvio.
+O cadastro também exige o objeto compatibilityAnswers, com respostas estruturadas do formulário de convivência. O front deve converter os rótulos exibidos em códigos:
+
+| Campo | Valores aceitos |
+|---|---|
+| sleepTime | BEFORE_21, FROM_21_TO_23, FROM_23_TO_01, AFTER_01 |
+| studyAtHome | YES, SOMETIMES, NO |
+| organization | VERY_ORGANIZED, SOMEWHAT, IMPROVING |
+| visitors | RARELY, SOMETIMES, FREQUENTLY |
+| smoking | YES, SOMETIMES, NO |
+| pets | YES, NO |
+| cleaning | DAILY, WEEKLY, FLEXIBLE |
+| environment | QUIET, BUSY, INDIFFERENT |
+| lifestyle | Lista não vazia, sem repetição: CALM, SOCIAL, ADVENTUROUS, STUDIOUS |
+
+As respostas ficam na tabela student_compatibility_answers, vinculadas ao estudante. A migration não altera contas existentes; será necessário um fluxo de atualização para que estudantes já cadastrados respondam ao formulário.
+
+
+Cadastra estudante buscador, criando a conta (`User`) e o perfil acadêmico (`Student`) juntos. A verificação do vínculo com a UFAL começa como `PENDING`, e um link de verificação é enviado para o e-mail informado. Se o envio falhar, o cadastro continua valendo. Para estudante ofertador, envie `advertisesProperty: true`: o cadastro cria também um `PropertyOwner` ligado ao mesmo usuário, necessário para anunciar imóveis. Omitir o campo ou enviar `false` mantém o cadastro de estudante buscador.
 
 Corpo da requisição:
 
@@ -315,11 +438,23 @@ Corpo da requisição:
   "enrollmentNumber": "20231234",
   "course": "Ciência da Computação",
   "period": 3,
-  "expectedGraduation": "2027-12-15"
+  "expectedGraduation": "2027-12-15",
+  "compatibilityAnswers": {
+    "sleepTime": "FROM_23_TO_01",
+    "studyAtHome": "SOMETIMES",
+    "organization": "VERY_ORGANIZED",
+    "visitors": "SOMETIMES",
+    "smoking": "NO",
+    "pets": "NO",
+    "cleaning": "WEEKLY",
+    "environment": "QUIET",
+    "lifestyle": ["CALM", "STUDIOUS"]
+  },
+  "advertisesProperty": false
 }
 ```
 
-`phone` é opcional. `expectedGraduation` é uma data ISO 8601 (`AAAA-MM-DD`). Campos que não estão na lista acima são recusados.
+`phone` e `advertisesProperty` são opcionais. `expectedGraduation` é uma data ISO 8601 (`AAAA-MM-DD`). Campos que não estão na lista acima são recusados. Com `advertisesProperty: true`, a resposta também inclui `propertyOwnerId`.
 
 Resposta `201 Created`:
 
@@ -339,6 +474,12 @@ Erros:
 | `422`  | Dado que viola uma regra de negócio (CPF inválido, senha curta, período fora...) | `INVALID_CPF`, `INVALID_EMAIL`, `INVALID_PASSWORD`, `INVALID_ACADEMIC_PERIOD`    |
 
 Os erros `409` e `422` têm o corpo `{ "statusCode": 409, "code": "EMAIL_ALREADY_IN_USE", "message": "Este e-mail já está cadastrado." }`.
+
+### `POST /property-owners`
+
+Cadastra proprietário de imóvel, criando `User` e `PropertyOwner` em uma transação e enviando verificação de e-mail. Aceita `name`, `email`, `cpf`, `password` e `phone` opcional. A resposta `201 Created` contém `{ "userId": "uuid", "propertyOwnerId": "uuid" }`. E-mail e CPF duplicados retornam `409`; dados inválidos retornam `422`; campos extras retornam `400`.
+
+Um estudante que também anuncia deve usar `POST /students` com `advertisesProperty: true`, para manter estudante e perfil de anunciante associados à mesma conta. Assim, os perfis disponíveis são estudante buscador (`POST /students`), estudante ofertador (`POST /students` com `advertisesProperty: true`) e proprietário (`POST /property-owners`).
 
 ### `POST /email-verification/confirm`
 
@@ -366,6 +507,66 @@ Envia um novo link de verificação. Os links anteriores deixam de funcionar.
 ```
 
 Responde **sempre `202 Accepted`**, sem corpo, exista ou não uma conta com esse e-mail, e o envio acontece em segundo plano. Assim, nem a resposta nem o tempo dela revelam quais e-mails estão cadastrados. Contas já verificadas, suspensas ou desativadas não recebem e-mail. O limite é de **3 pedidos a cada 15 minutos por IP** (depois disso, `429`).
+
+## Chat
+
+Todas as rotas exigem o header `Authorization: Bearer <accessToken>` (obtido em `POST /auth/login`). Sem token ou com token inválido: `401`. Só usuários com **e-mail verificado** e conta ativa usam o chat.
+
+| Método | Rota                       | O que faz                                                                  | Sucesso         |
+| ------ | -------------------------- | -------------------------------------------------------------------------- | --------------- |
+| POST   | `/chats/direct`            | Abre (ou devolve) a conversa 1:1 com `targetUserId` **ou** com o dono do `listingId` | `201` nova, `200` existente |
+| POST   | `/chats/groups`            | Cria grupo: `{ "name": "...", "memberIds": ["uuid", ...] }` (3 a 50 pessoas contando quem cria) | `201` |
+| GET    | `/chats?limit=&cursor=`    | Minhas conversas, da atividade mais recente para a mais antiga             | `200`           |
+| GET    | `/chats/:chatId`           | Uma conversa                                                               | `200`           |
+| GET    | `/chats/:chatId/messages?limit=&cursor=` | Histórico, da mensagem mais recente para a mais antiga       | `200`           |
+| POST   | `/chats/:chatId/messages`  | Envia `{ "content": "...", "listingId": "uuid" }` (texto, anúncio ou os dois) | `201`        |
+| POST   | `/chats/:chatId/read`      | Marca a conversa como lida                                                 | `204`           |
+
+Conversa (`ChatResponse`):
+
+```json
+{
+  "id": "uuid",
+  "type": "DIRECT",
+  "name": null,
+  "participants": [
+    { "userId": "uuid", "name": "Ana", "photoUrl": null, "role": "MEMBER", "lastReadAt": "2026-11-17T10:05:00.000Z" }
+  ],
+  "lastMessage": { "id": "uuid", "chatId": "uuid", "senderId": "uuid", "content": "Oi!", "listingId": null, "createdAt": "2026-11-17T10:04:00.000Z" },
+  "unreadCount": 2,
+  "lastActivityAt": "2026-11-17T10:04:00.000Z",
+  "createdAt": "2026-11-17T09:00:00.000Z"
+}
+```
+
+As listagens respondem `{ "data": [...], "nextCursor": "..." }`. Para a próxima página, repita a requisição com `cursor=<nextCursor>`; `nextCursor` `null` indica o fim. `limit` vai de 1 a 100 (padrão 30). Membros novos de um grupo só veem as mensagens enviadas depois de entrarem.
+
+Erros:
+
+| Status | `code`                                   | Quando                                                                 |
+| ------ | ---------------------------------------- | ---------------------------------------------------------------------- |
+| `400`  | —                                        | Corpo inválido, `targetUserId` e `listingId` juntos ou nenhum, `cursor` inválido |
+| `403`  | `EMAIL_NOT_VERIFIED`, `CHAT_ACCESS_DENIED` | E-mail não verificado; conta inexistente ou inativa                  |
+| `404`  | `CHAT_NOT_FOUND`                         | A conversa não existe **ou** o usuário não participa dela              |
+| `404`  | `LISTING_NOT_FOUND`                      | Anúncio inexistente ou não aprovado                                    |
+| `422`  | `CANNOT_CHAT_WITH_YOURSELF`              | Conversa consigo mesmo, inclusive pelo próprio anúncio                 |
+| `422`  | `CHAT_USER_UNAVAILABLE`                  | Destinatário ou membro inexistente, inativo ou sem e-mail verificado   |
+| `422`  | `EMPTY_MESSAGE`, `INVALID_MESSAGE_CONTENT` | Sem texto e sem anúncio; texto com mais de 2000 caracteres           |
+| `422`  | `INVALID_GROUP_NAME`, `INVALID_GROUP_SIZE` | Nome vazio ou com mais de 60 caracteres; grupo fora de 3 a 50 pessoas |
+
+### Tempo real (Socket.IO)
+
+Conecte no namespace `/chat` com o mesmo token:
+
+```js
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000/chat', { auth: { token: accessToken } });
+socket.on('message:new', (message) => { /* MessageResponse */ });
+socket.on('chat:read', ({ chatId, userId, readAt }) => { /* alguém leu */ });
+```
+
+Token inválido: o servidor desconecta o socket. O envio de mensagens continua pelo `POST /chats/:chatId/messages`; o socket só entrega os eventos para os outros participantes (quem enviou já recebe a mensagem na resposta HTTP).
 
 ## Testes
 
@@ -504,7 +705,7 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 - **Regras cobertas no domínio:** CEP e estado válidos, limites de título/descrição/regras, valores de aluguel e condomínio, quantidades de quartos/banheiros/vagas, até 10 fotos e pelo menos um coabitante.
 - **Persistência:** `PrismaPropertyRepository` e `PropertyMapper` persistem e reconstroem o agregado usando Prisma/PostgreSQL. A criação usa writes aninhados para salvar residência, imóvel, coabitantes, anúncio e mídias.
 - **Testabilidade:** `InMemoryPropertyRepository` permite testar o caso de uso sem banco de dados.
-- **HTTP:** `PropertyController` expõe `POST /properties` para publicação de anúncios.
+- **HTTP:** `PropertyController` expõe `POST /properties` para publicação e `GET /properties?location=<termo>` para buscar anúncios aprovados por cidade, bairro ou estado.
 - **Schema e migration:** os modelos `Residence`, `Property`, `PropertyCohabitant`, `Listing` e `ListingMedia`, seus enums e a migration de conversão do antigo `ownerId` para coabitantes estão em `prisma/schema.prisma` e `prisma/migrations/`.
 
 **Regras de negócio já garantidas pelo domínio**

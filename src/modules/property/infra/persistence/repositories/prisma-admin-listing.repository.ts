@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { isUuid } from '../../../../../shared/infra/database/uuid.js';
-import type { Prisma } from '../../../../../shared/infra/database/generated/prisma/client.js';
+import {
+  ListingStatus as PrismaListingStatus,
+  type Prisma,
+} from '../../../../../shared/infra/database/generated/prisma/client.js';
 import { PrismaService } from '../../../../../shared/infra/database/prisma.service.js';
+import { isUuid } from '../../../../../shared/infra/database/uuid.js';
 import { ListingStatus } from '../../../domain/enums/listing-status.enum.js';
 import type {
   AdminListingPage,
@@ -28,6 +31,40 @@ type AdminListingRow = Prisma.ListingGetPayload<{
   include: typeof ADMIN_LISTING_INCLUDE;
 }>;
 
+function toDomainStatus(status: PrismaListingStatus): ListingStatus {
+  switch (status) {
+    case PrismaListingStatus.PENDING:
+      return ListingStatus.PENDING;
+    case PrismaListingStatus.IN_REVIEW:
+      return ListingStatus.IN_REVIEW;
+    case PrismaListingStatus.APPROVED:
+      return ListingStatus.APPROVED;
+    case PrismaListingStatus.REJECTED:
+      return ListingStatus.REJECTED;
+    case PrismaListingStatus.ARCHIVED:
+      return ListingStatus.ARCHIVED;
+    case PrismaListingStatus.REMOVED:
+      return ListingStatus.REMOVED;
+  }
+}
+
+function toPrismaStatus(status: ListingStatus): PrismaListingStatus {
+  switch (status) {
+    case ListingStatus.PENDING:
+      return PrismaListingStatus.PENDING;
+    case ListingStatus.IN_REVIEW:
+      return PrismaListingStatus.IN_REVIEW;
+    case ListingStatus.APPROVED:
+      return PrismaListingStatus.APPROVED;
+    case ListingStatus.REJECTED:
+      return PrismaListingStatus.REJECTED;
+    case ListingStatus.ARCHIVED:
+      return PrismaListingStatus.ARCHIVED;
+    case ListingStatus.REMOVED:
+      return PrismaListingStatus.REMOVED;
+  }
+}
+
 function toAdminRecord(row: AdminListingRow): AdminListingRecord {
   return {
     listingId: row.id,
@@ -39,7 +76,7 @@ function toAdminRecord(row: AdminListingRow): AdminListingRecord {
     condominium: row.condominium === null ? null : Number(row.condominium),
     contractType: row.contractType,
     minimumStay: row.minimumStay,
-    status: toDomainListingStatus(row.status),
+    status: toDomainStatus(row.status),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     property: {
@@ -73,21 +110,6 @@ function toAdminRecord(row: AdminListingRow): AdminListingRecord {
   };
 }
 
-function toDomainListingStatus(status: string): ListingStatus {
-  switch (status) {
-    case 'PENDING':
-      return ListingStatus.PENDING;
-    case 'IN_REVIEW':
-      return ListingStatus.IN_REVIEW;
-    case 'APPROVED':
-      return ListingStatus.APPROVED;
-    case 'REJECTED':
-      return ListingStatus.REJECTED;
-    default:
-      throw new Error(`Status de anúncio não suportado: ${status}`);
-  }
-}
-
 @Injectable()
 export class PrismaAdminListingRepository extends AdminListingRepository {
   constructor(private readonly prisma: PrismaService) {
@@ -96,7 +118,7 @@ export class PrismaAdminListingRepository extends AdminListingRepository {
 
   async findPage(query: AdminListingQuery): Promise<AdminListingPage> {
     const where: Prisma.ListingWhereInput = {};
-    if (query.status) where.status = query.status;
+    if (query.status) where.status = toPrismaStatus(query.status);
     if (query.search) {
       const contains = { contains: query.search, mode: 'insensitive' as const };
       where.OR = [
@@ -104,18 +126,19 @@ export class PrismaAdminListingRepository extends AdminListingRepository {
         { description: contains },
         {
           property: {
-            is: {
-              residence: {
-                is: { city: contains },
-              },
-            },
+            is: { residence: { is: { city: contains } } },
+          },
+        },
+        {
+          property: {
+            is: { residence: { is: { neighborhood: contains } } },
           },
         },
         {
           property: {
             is: {
-              residence: {
-                is: { neighborhood: contains },
+              owner: {
+                is: { user: { is: { name: contains } } },
               },
             },
           },
@@ -124,29 +147,13 @@ export class PrismaAdminListingRepository extends AdminListingRepository {
           property: {
             is: {
               owner: {
-                is: {
-                  user: {
-                    is: { name: contains },
-                  },
-                },
-              },
-            },
-          },
-        },
-        {
-          property: {
-            is: {
-              owner: {
-                is: {
-                  user: {
-                    is: { email: contains },
-                  },
-                },
+                is: { user: { is: { email: contains } } },
               },
             },
           },
         },
       ];
+      // Busca direta pelo id do anúncio quando o termo é um UUID.
       if (isUuid(query.search)) where.OR.push({ id: query.search });
     }
 

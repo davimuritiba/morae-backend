@@ -11,6 +11,7 @@ import {
 import { ChangeUserAccountStatusUseCase } from '../../../application/use-cases/change-user-account-status/change-user-account-status.use-case.js';
 import { GetAdminUserUseCase } from '../../../application/use-cases/get-admin-user/get-admin-user.use-case.js';
 import { ListAdminUsersUseCase } from '../../../application/use-cases/list-admin-users/list-admin-users.use-case.js';
+import { Permission } from '../../../domain/enums/permission.enum.js';
 import {
   AdminPermissionsGuard,
   RequireAdminPermission,
@@ -20,7 +21,7 @@ import { ListAdminUsersDto } from '../dtos/list-admin-users.dto.js';
 
 @Controller('admin/users')
 @UseGuards(AdminPermissionsGuard)
-@RequireAdminPermission('MANAGE_USERS')
+@RequireAdminPermission(Permission.MANAGE_USERS)
 export class AdminUsersController {
   constructor(
     private readonly listUsers: ListAdminUsersUseCase,

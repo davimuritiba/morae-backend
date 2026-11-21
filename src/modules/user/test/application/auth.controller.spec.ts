@@ -85,10 +85,46 @@ describe('AuthController user login', () => {
   it.each([
     { email: 'maria@ufal.br', password: 'senha-incorreta' },
     { email: 'desconhecido@ufal.br', password: 'senha-segura-123' },
-  ])('rejects invalid credentials without disclosing the account', async (input) => {
-    await expect(controller.loginUser(input)).rejects.toMatchObject({
-      code: 'INVALID_CREDENTIALS',
-      message: 'Credenciais inválidas.',
-    } satisfies Partial<InvalidCredentialsError>);
+  ])(
+    'rejects invalid credentials without disclosing the account',
+    async (input) => {
+      await expect(controller.loginUser(input)).rejects.toMatchObject({
+        code: 'INVALID_CREDENTIALS',
+        message: 'Credenciais inválidas.',
+      } satisfies Partial<InvalidCredentialsError>);
+    },
+  );
+
+  it('issues an administrator bearer token with the assigned permissions', async () => {
+    const administratorLogin = {
+      execute: vi.fn().mockResolvedValue({
+        administratorId: 'admin-id',
+        userId: 'user-id',
+        login: 'admin',
+        permissions: [Permission.MANAGE_USERS, Permission.MODERATE_LISTINGS],
+      }),
+    } as unknown as LoginAdministratorUseCase;
+    const administratorController = new AuthController(
+      new LoginUseCase(users, hasher),
+      tokenService,
+      administratorLogin,
+    );
+
+    const response = await administratorController.loginAdministrator({
+      login: 'admin',
+      password: 'senha-segura-123',
+    });
+
+    expect(response).toMatchObject({
+      administratorId: 'admin-id',
+      userId: 'user-id',
+      permissions: [Permission.MANAGE_USERS, Permission.MODERATE_LISTINGS],
+      tokenType: 'Bearer',
+    });
+    await expect(tokenService.verify(response.accessToken)).resolves.toEqual({
+      userId: 'user-id',
+      administratorId: 'admin-id',
+      permissions: [Permission.MANAGE_USERS, Permission.MODERATE_LISTINGS],
+    });
   });
 });
