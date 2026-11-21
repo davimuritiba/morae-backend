@@ -11,8 +11,15 @@ if (!connectionString) {
 
 const pool = new Pool({ connectionString });
 const timestamp = '2026-11-06T17:00:00.000Z';
-const adminPasswordHash = await argon2.hash('Admin@123');
-const passwordHash = await argon2.hash('senha-segura-123');
+// Os valores padrão servem só para desenvolvimento e testes. Num servidor
+// acessível pela internet, defina SEED_ADMIN_PASSWORD e SEED_USER_PASSWORD
+// (o compose de deploy/ exige as duas).
+const adminPasswordHash = await argon2.hash(
+  process.env.SEED_ADMIN_PASSWORD || 'Admin@123',
+);
+const passwordHash = await argon2.hash(
+  process.env.SEED_USER_PASSWORD || 'senha-segura-123',
+);
 
 const users = [
   ['11111111-1111-4111-8111-111111111111', 'Mariana Albuquerque', 'mariana.albuquerque@example.com', '52998224725', '82999990001'],

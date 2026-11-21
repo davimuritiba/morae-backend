@@ -10,6 +10,18 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     instrument: ObserveInstrument,
   });
+  // Atrás de um proxy reverso (o Caddy na VPS), o IP real de quem acessa
+  // chega no cabeçalho X-Forwarded-For. Sem isto, todos os acessos parecem
+  // vir do proxy e os limites por IP (login, recuperação de senha) valeriam
+  // para todos os usuários juntos. Use TRUST_PROXY=1 só atrás de um proxy:
+  // sem ele, qualquer cliente poderia forjar o cabeçalho.
+  const trustProxy = process.env.TRUST_PROXY?.trim();
+  if (trustProxy) {
+    app.set(
+      'trust proxy',
+      /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy,
+    );
+  }
   app.enableCors();
   app.use(
     '/uploads/listings',

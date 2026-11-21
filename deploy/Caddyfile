@@ -1,0 +1,20 @@
+# O Caddy obtém e renova os certificados HTTPS sozinho, desde que DOMAIN
+# aponte para o IP da VPS e as portas 80 e 443 estejam abertas.
+
+# Frontend: arquivos do build; rotas do React Router caem no index.html.
+{$DOMAIN} {
+	encode zstd gzip
+	root * /srv
+	try_files {path} /index.html
+	file_server
+}
+
+# API (inclui o WebSocket do chat e as fotos em /uploads).
+api.{$DOMAIN} {
+	encode zstd gzip
+	# Anúncios aceitam até 10 fotos de 5 MB (property.controller.ts).
+	request_body {
+		max_size 60MB
+	}
+	reverse_proxy api:3000
+}

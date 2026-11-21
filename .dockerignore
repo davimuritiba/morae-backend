@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+dist
+uploads
+coverage
+test
+deploy
+*.tsbuildinfo
+.env
+.env.*
+src/shared/infra/database/generated
