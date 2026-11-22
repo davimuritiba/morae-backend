@@ -55,8 +55,8 @@ Gere os segredos e já grave no `.env`:
 ```bash
 sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" .env
 sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$(openssl rand -hex 32)/" .env
-sed -i "s/^SEED_ADMIN_PASSWORD=.*/SEED_ADMIN_PASSWORD=$(openssl rand -base64 12)/" .env
-sed -i "s/^SEED_USER_PASSWORD=.*/SEED_USER_PASSWORD=$(openssl rand -base64 12)/" .env
+sed -i "s/^SEED_ADMIN_PASSWORD=.*/SEED_ADMIN_PASSWORD=$(openssl rand -hex 8)/" .env
+sed -i "s/^SEED_USER_PASSWORD=.*/SEED_USER_PASSWORD=$(openssl rand -hex 8)/" .env
 ```
 
 Depois abra o arquivo (`nano .env`) e preencha:
