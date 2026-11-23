@@ -55,6 +55,36 @@ enum ListingStatus {
   REMOVED
 }
 
+enum InterestStatus {
+  PENDING
+  IN_CONVERSATION
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ReportCategory {
+  FRAUD
+  HARASSMENT
+  INAPPROPRIATE_CONTENT
+  SAFETY
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ContractDocumentType {
+  SIGNED_CONTRACT
+  IDENTITY_DOCUMENT
+  PROOF_OF_ADDRESS
+  OTHER
+}
+
 enum MediaType {
   PHOTO
   VIDEO
@@ -129,6 +159,7 @@ model User {
   administrator             Administrator?
   propertyCohabitancies     PropertyCohabitant[]
   emailVerificationTokens   EmailVerificationToken[]
+  externalAuthCodes         ExternalAuthCode[]
   createdChats              Chat[]
   chatParticipations        ChatParticipant[]
   sentMessages              Message[]
@@ -141,8 +172,50 @@ model User {
   rentalContractsAsTenant   RentalContract[]           @relation("RentalContractTenant")
   paymentProviderConnection PaymentProviderConnection?
   paymentOAuthStates        PaymentOAuthState[]
+  googleIdentity            GoogleIdentity?
+  reviewsGiven              Review[]                    @relation("ReviewReviewer")
+  reviewsReceived            Review[]                    @relation("ReviewReviewed")
+  reportsSubmitted          Report[]                    @relation("ReportReporter")
+  reportsReceived            Report[]                    @relation("ReportTarget")
+  contractDocumentsUploaded ContractDocument[]          @relation("ContractDocumentUploader")
 
   @@map("users")
+}
+
+model ExternalAuthState {
+  id        String   @id @db.Uuid
+  provider  String   @db.VarChar(30)
+  stateHash String   @unique @map("state_hash") @db.Char(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([provider, expiresAt])
+  @@map("external_auth_states")
+}
+
+model ExternalAuthCode {
+  id        String   @id @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  provider  String   @db.VarChar(30)
+  codeHash  String   @unique @map("code_hash") @db.Char(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([provider, expiresAt])
+  @@map("external_auth_codes")
+}
+
+model GoogleIdentity {
+  id        String   @id @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  subject   String   @unique @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("google_identities")
 }
 
 // Token de uso único para confirmar o e-mail. Só o hash do token (SHA-256 em
@@ -392,6 +465,7 @@ model Listing {
   interests           Interest[]
   rentalContracts     RentalContract[]
   paymentTransactions PaymentTransaction[]
+  reports             Report[]
 
   @@index([propertyId])
   @@index([status])
@@ -429,7 +503,9 @@ model Favorite {
 model Interest {
   userId    String   @map("user_id") @db.Uuid
   listingId String   @map("listing_id") @db.Uuid
+  status    InterestStatus @default(PENDING)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
@@ -549,10 +625,76 @@ model RentalContract {
   owner               User                 @relation("RentalContractOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   tenant              User                 @relation("RentalContractTenant", fields: [tenantId], references: [id], onDelete: Restrict)
   paymentTransactions PaymentTransaction[]
+  review              Review?
+  documents            ContractDocument[]
 
   @@index([ownerId, status])
   @@index([tenantId, status])
   @@map("rental_contracts")
+}
+
+model Review {
+  id            String   @id @db.Uuid
+  contractId    String   @unique @map("contract_id") @db.Uuid
+  reviewerId    String   @map("reviewer_id") @db.Uuid
+  reviewedUserId String  @map("reviewed_user_id") @db.Uuid
+  cleanliness   Int      @db.SmallInt
+  condition     Int      @db.SmallInt
+  location      Int      @db.SmallInt
+  communication Int      @db.SmallInt
+  value         Int      @db.SmallInt
+  overall       Int      @db.SmallInt
+  comment       String   @db.VarChar(1000)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  contract     RentalContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  reviewer     User           @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewedUser User           @relation("ReviewReviewed", fields: [reviewedUserId], references: [id], onDelete: Cascade)
+
+  @@index([reviewedUserId, createdAt(sort: Desc)])
+  @@index([reviewerId])
+  @@map("reviews")
+}
+
+model Report {
+  id           String         @id @db.Uuid
+  reporterId   String         @map("reporter_id") @db.Uuid
+  targetUserId String         @map("target_user_id") @db.Uuid
+  listingId    String?        @map("listing_id") @db.Uuid
+  category     ReportCategory
+  description  String         @db.VarChar(2000)
+  status       ReportStatus   @default(OPEN)
+  adminNote    String?        @map("admin_note") @db.VarChar(2000)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  reporter   User     @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetUser User     @relation("ReportTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  listing    Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([reporterId, createdAt(sort: Desc)])
+  @@index([targetUserId, createdAt(sort: Desc)])
+  @@index([listingId])
+  @@map("reports")
+}
+
+model ContractDocument {
+  id           String               @id @db.Uuid
+  contractId   String               @map("contract_id") @db.Uuid
+  uploaderId   String               @map("uploader_id") @db.Uuid
+  storageKey   String               @unique @map("storage_key") @db.VarChar(36)
+  originalName String               @map("original_name") @db.VarChar(180)
+  mimeType     String               @map("mime_type") @db.VarChar(40)
+  sizeBytes    Int                  @map("size_bytes")
+  documentType ContractDocumentType @map("document_type")
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  contract RentalContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  uploader User           @relation("ContractDocumentUploader", fields: [uploaderId], references: [id], onDelete: Restrict)
+
+  @@index([contractId, createdAt(sort: Desc)])
+  @@map("contract_documents")
 }
 
 model PaymentProviderConnection {

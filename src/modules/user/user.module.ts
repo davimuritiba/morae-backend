@@ -38,9 +38,11 @@ import { PrismaUserRepository } from './infra/persistence/repositories/prisma-us
 import { PrismaAdministratorRepository } from './infra/persistence/repositories/prisma-administrator.repository.js';
 import { Argon2Hasher } from './infra/services/argon2-hasher.js';
 import { CryptoVerificationTokenGenerator } from './infra/services/crypto-verification-token-generator.js';
+import { GoogleOAuthService } from './infra/services/google-oauth.service.js';
 import { MailEmailVerificationNotifier } from './infra/services/mail-email-verification-notifier.js';
 import { MailPasswordResetNotifier } from './infra/services/mail-password-reset-notifier.js';
 import { AuthController } from './presentation/http/controllers/auth.controller.js';
+import { GoogleOAuthController } from './presentation/http/controllers/google-oauth.controller.js';
 import { AdminUsersController } from './presentation/http/controllers/admin-users.controller.js';
 import { EmailVerificationController } from './presentation/http/controllers/email-verification.controller.js';
 import { PasswordResetController } from './presentation/http/controllers/password-reset.controller.js';
@@ -55,6 +57,7 @@ const HOUR_MS = 60 * 60 * 1000;
 @Module({
   controllers: [
     AuthController,
+    GoogleOAuthController,
     AdminUsersController,
     StudentsController,
     PropertyOwnersController,
@@ -64,6 +67,7 @@ const HOUR_MS = 60 * 60 * 1000;
   ],
   exports: [UserRepository, StudentRepository],
   providers: [
+    GoogleOAuthService,
     // Contratos → implementações. As classes abstratas servem de token.
     { provide: UserRepository, useClass: PrismaUserRepository },
     { provide: StudentRepository, useClass: PrismaStudentRepository },

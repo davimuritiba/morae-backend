@@ -41,4 +41,17 @@ describe('GetUserByIdUseCase', () => {
       sut.execute('00000000-0000-0000-0000-000000000000'),
     ).rejects.toBeInstanceOf(UserNotFoundError);
   });
+
+  it('does not expose a profile after administrative deactivation', async () => {
+    const user = User.create({
+      name: 'Maria Silva',
+      email: Email.create('maria@ufal.br'),
+      cpf: Cpf.create('529.982.247-25'),
+      passwordHash: 'hashed:senha-segura-123',
+    });
+    user.deactivate();
+    await users.save(user);
+
+    await expect(sut.execute(user.id)).rejects.toBeInstanceOf(UserNotFoundError);
+  });
 });

@@ -6,6 +6,8 @@ import { InteractionModule } from './modules/interaction/interaction.module.js';
 import { MatchingModule } from './modules/matching/matching.module.js';
 import { PaymentModule } from './modules/payment/payment.module.js';
 import { PropertyModule } from './modules/property/property.module.js';
+import { ReportModule } from './modules/report/report.module.js';
+import { ContractModule } from './modules/contract/contract.module.js';
 import { AuthModule } from './shared/infra/auth/auth.module.js';
 import { UserModule } from './modules/user/user.module.js';
 import { DatabaseModule } from './shared/infra/database/database.module.js';
@@ -36,6 +38,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     InteractionModule,
     MatchingModule,
     PaymentModule,
+    ReportModule,
+    ContractModule,
   ],
   providers: [
     // Registrados como providers (e não em main.ts) para valerem também nos

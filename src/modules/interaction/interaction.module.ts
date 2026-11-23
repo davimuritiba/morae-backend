@@ -34,17 +34,27 @@ import { RemoveFavoriteUseCase } from './application/use-cases/remove-favorite/r
 import { AddInterestUseCase } from './application/use-cases/add-interest/add-interest.use-case.js';
 import { RemoveInterestUseCase } from './application/use-cases/remove-interest/remove-interest.use-case.js';
 import { ListInterestedUsersUseCase } from './application/use-cases/list-interested-users/list-interested-users.use-case.js';
+import { GetMyInterestUseCase } from './application/use-cases/get-my-interest/get-my-interest.use-case.js';
+import { ListReceivedInterestsUseCase } from './application/use-cases/list-received-interests/list-received-interests.use-case.js';
+import { UpdateInterestStatusUseCase } from './application/use-cases/update-interest-status/update-interest-status.use-case.js';
+import { SubmitReviewUseCase } from './application/use-cases/submit-review/submit-review.use-case.js';
+import { ListUserReviewsUseCase } from './application/use-cases/list-user-reviews/list-user-reviews.use-case.js';
+import { ListEligibleReviewContractsUseCase } from './application/use-cases/list-eligible-review-contracts/list-eligible-review-contracts.use-case.js';
 import { InterestsController } from './presentation/http/controllers/interests.controller.js';
+import { ReviewsController } from './presentation/http/controllers/reviews.controller.js';
+import { ReviewRepository } from './domain/repositories/review.repository.js';
+import { PrismaReviewRepository } from './infra/persistence/repositories/prisma-review.repository.js';
 import { ChatGateway } from './presentation/ws/chat.gateway.js';
 import { SocketChatNotifier } from './presentation/ws/socket-chat-notifier.js';
 
 @Module({
-  controllers: [ChatsController, FavoritesController, InterestsController],
+  controllers: [ChatsController, FavoritesController, InterestsController, ReviewsController],
   providers: [
     { provide: ChatRepository, useClass: PrismaChatRepository },
     { provide: MessageRepository, useClass: PrismaMessageRepository },
     { provide: FavoriteRepository, useClass: PrismaFavoriteRepository },
     { provide: InterestRepository, useClass: PrismaInterestRepository },
+    { provide: ReviewRepository, useClass: PrismaReviewRepository },
     { provide: ChatInboxQuery, useClass: PrismaChatInboxQuery },
     { provide: ChatUserDirectory, useClass: PrismaChatUserDirectory },
     { provide: ListingDirectory, useClass: PrismaListingDirectory },
@@ -78,6 +88,40 @@ import { SocketChatNotifier } from './presentation/ws/socket-chat-notifier.js';
       useFactory: (interests: InterestRepository) =>
         new ListInterestedUsersUseCase(interests),
       inject: [InterestRepository],
+    },
+    {
+      provide: GetMyInterestUseCase,
+      useFactory: (interests: InterestRepository) => new GetMyInterestUseCase(interests),
+      inject: [InterestRepository],
+    },
+    {
+      provide: ListReceivedInterestsUseCase,
+      useFactory: (interests: InterestRepository) =>
+        new ListReceivedInterestsUseCase(interests),
+      inject: [InterestRepository],
+    },
+    {
+      provide: UpdateInterestStatusUseCase,
+      useFactory: (interests: InterestRepository) =>
+        new UpdateInterestStatusUseCase(interests),
+      inject: [InterestRepository],
+    },
+    {
+      provide: SubmitReviewUseCase,
+      useFactory: (reviews: ReviewRepository, clock: Clock) =>
+        new SubmitReviewUseCase(reviews, clock),
+      inject: [ReviewRepository, Clock],
+    },
+    {
+      provide: ListUserReviewsUseCase,
+      useFactory: (reviews: ReviewRepository) => new ListUserReviewsUseCase(reviews),
+      inject: [ReviewRepository],
+    },
+    {
+      provide: ListEligibleReviewContractsUseCase,
+      useFactory: (reviews: ReviewRepository, clock: Clock) =>
+        new ListEligibleReviewContractsUseCase(reviews, clock),
+      inject: [ReviewRepository, Clock],
     },
     ChatGateway,
     { provide: ChatNotifier, useClass: SocketChatNotifier },

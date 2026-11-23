@@ -62,6 +62,33 @@ describe('AdminPermissionsGuard', () => {
     await expect(guard.canActivate(makeContext(token))).resolves.toBe(true);
   });
 
+  it('requires every permission configured for a sensitive admin action', async () => {
+    getAllAndOverride.mockReturnValue([
+      Permission.VIEW_REPORTS,
+      Permission.MANAGE_USERS,
+    ]);
+    const token = await tokens.signAdministrator('user-id', 'admin-id', [
+      Permission.VIEW_REPORTS,
+    ]);
+
+    await expect(guard.canActivate(makeContext(token))).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('allows a sensitive admin action when every permission is present', async () => {
+    getAllAndOverride.mockReturnValue([
+      Permission.VIEW_REPORTS,
+      Permission.MANAGE_USERS,
+    ]);
+    const token = await tokens.signAdministrator('user-id', 'admin-id', [
+      Permission.VIEW_REPORTS,
+      Permission.MANAGE_USERS,
+    ]);
+
+    await expect(guard.canActivate(makeContext(token))).resolves.toBe(true);
+  });
+
   it('rejects an administrator whose account has been suspended', async () => {
     findUser.mockResolvedValue({ status: 'SUSPENDED' });
     const token = await tokens.signAdministrator('user-id', 'admin-id', [

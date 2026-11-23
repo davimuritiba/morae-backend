@@ -1,4 +1,5 @@
 import { UserNotFoundError } from '../../../domain/errors/user-not-found.error.js';
+import { AccountStatus } from '../../../domain/enums/account-status.enum.js';
 import { UserRepository } from '../../../domain/repositories/user.repository.js';
 import type { GetUserByIdOutput } from './get-user-by-id.output.js';
 
@@ -8,7 +9,7 @@ export class GetUserByIdUseCase {
   async execute(userId: string): Promise<GetUserByIdOutput> {
     const user = await this.users.findById(userId);
 
-    if (user === null) {
+    if (user === null || user.status === AccountStatus.DEACTIVATED) {
       throw new UserNotFoundError();
     }
 

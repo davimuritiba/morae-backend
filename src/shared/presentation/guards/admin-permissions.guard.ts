@@ -18,6 +18,10 @@ export function RequireAdminPermission(permission: Permission) {
   return SetMetadata(REQUIRED_ADMIN_PERMISSION, permission);
 }
 
+export function RequireAdminPermissions(...permissions: Permission[]) {
+  return SetMetadata(REQUIRED_ADMIN_PERMISSION, permissions);
+}
+
 @Injectable()
 export class AdminPermissionsGuard implements CanActivate {
   constructor(
@@ -27,11 +31,18 @@ export class AdminPermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermission = this.reflector.getAllAndOverride<Permission>(
+    const requiredPermission = this.reflector.getAllAndOverride<
+      Permission | Permission[]
+    >(
       REQUIRED_ADMIN_PERMISSION,
       [context.getHandler(), context.getClass()],
     );
-    if (!requiredPermission) {
+    const requiredPermissions = Array.isArray(requiredPermission)
+      ? requiredPermission
+      : requiredPermission
+        ? [requiredPermission]
+        : [];
+    if (!requiredPermissions.length) {
       throw new ForbiddenException('Permissão administrativa não configurada.');
     }
 
@@ -53,7 +64,7 @@ export class AdminPermissionsGuard implements CanActivate {
     if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException();
     }
-    if (!payload.permissions?.includes(requiredPermission)) {
+    if (!requiredPermissions.every((permission) => payload.permissions?.includes(permission))) {
       throw new ForbiddenException(
         'Você não tem permissão para esta operação administrativa.',
       );

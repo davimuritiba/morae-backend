@@ -6,6 +6,10 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
 
 > **Autenticação:** o cadastro e login de usuários, a verificação de e-mail e a redefinição de senha por link enviado por e-mail estão disponíveis. O fluxo de redefinição usa tokens de uso único, armazenados como hash e com expiração configurável.
 
+> **Login Google:** o OAuth Google está disponível para contas Moraê já cadastradas. A primeira entrada exige um e-mail Google verificado que corresponda ao e-mail da conta Moraê; o usuário deve completar o cadastro normal antes de usar este login. Configure as variáveis `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `GOOGLE_OAUTH_REDIRECT_URI`, e cadastre a mesma URL de callback no Google Cloud Console. O callback redireciona para `APP_WEB_URL/login`.
+
+> **Login SIGAA:** ainda não está integrado. A UFAL precisa fornecer uma integração oficial de SSO para aplicações externas (OIDC, SAML ou CAS). A Moraê não solicita nem encaminha senhas do SIGAA.
+
 ## Stack
 
 | Item                  | Tecnologia                                      |
@@ -48,6 +52,8 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
    | `JWT_SECRET`                   | **sim**     | Chave aleatória exclusiva com pelo menos 32 bytes, usada para assinar tokens de acesso. Não reutilize em produção.                                       |
    | `JWT_EXPIRES_IN_MINUTES`        | não         | Validade do token de acesso em minutos. Padrão: `60`.                                                                                                    |
    | `UPLOADS_DIR`                   | não         | Diretório persistente das fotos dos anúncios. Padrão: `./uploads`.                                                                                       |
+   | `CONTRACT_DOCUMENTS_ENCRYPTION_KEY` | para documentos | Chave exclusiva de 32 bytes em base64 para criptografar documentos de contratos em repouso. Gere com `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`. |
+   | `CONTRACT_DOCUMENTS_DIR`        | não         | Diretório persistente e privado dos documentos. Padrão: `./private-documents`; não use o diretório público `UPLOADS_DIR`.                               |
    | `TEST_DATABASE_URL`            | não         | Banco dos testes de integração e e2e. O nome precisa terminar em `_test`. Se omitida, usa o banco da `DATABASE_URL` com o sufixo `_test` (`morae_test`). |
    | `OBSERVE_APP_KEY`              | não         | Chave do [NestJS Observe](https://observe.nestjs.com). Sem ela, a telemetria é descartada e a app funciona normalmente.                                  |
    | `OBSERVE_APP_SECRET`           | não         | Segredo pareado com a chave acima.                                                                                                                       |
@@ -57,6 +63,9 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
    | `SMTP_USER` / `SMTP_PASSWORD`  | não         | Credenciais do SMTP. O Mailpit não exige.                                                                                                                |
    | `MAIL_FROM`                    | **sim**     | Remetente dos e-mails, ex.: `"Moraê <nao-responda@morae.local>"`.                                                                                        |
    | `APP_WEB_URL`                  | **sim**     | Endereço do front-end; usado nos links de verificação e redefinição de senha.                                                                           |
+   | `GOOGLE_CLIENT_ID`              | não         | Client ID OAuth criado no Google Cloud Console. Sem esta e as demais credenciais OAuth, o botão Google informa indisponibilidade.                          |
+   | `GOOGLE_CLIENT_SECRET`          | não         | Segredo OAuth mantido exclusivamente no servidor.                                                                                                       |
+   | `GOOGLE_OAUTH_REDIRECT_URI`     | não         | URL de callback registrada no Google Cloud Console, por exemplo `https://api.exemplo.com/auth/google/callback`.                                          |
    | `EMAIL_VERIFICATION_TTL_HOURS` | não         | Validade do link de verificação, em horas. Padrão: `24`.                                                                                                |
    | `PASSWORD_RESET_TTL_MINUTES`   | não         | Validade do link de redefinição de senha, em minutos. Padrão: `30`.                                                                                    |
 
@@ -128,6 +137,16 @@ npm run start:prod
 
 ## Endpoints
 
+### Denúncias
+
+- `POST /reports` exige autenticação, e o denunciante deve ter e-mail confirmado e um perfil de estudante ou ofertante com verificação `VERIFIED`. Recebe exatamente um de `targetUserId` (perfil) ou `listingId` (anúncio), `category` (`FRAUD`, `HARASSMENT`, `INAPPROPRIATE_CONTENT`, `SAFETY` ou `OTHER`) e uma descrição de 20 a 2.000 caracteres. Em denúncias de anúncio, o usuário denunciado é derivado do proprietário registrado; não é possível denunciar a própria conta ou anúncio.
+- `GET /admin/reports` lista denúncias com filtros opcionais `search`, `status`, `page` e `limit`.
+- `PATCH /admin/reports/:reportId/status` atualiza `status` (`OPEN`, `UNDER_REVIEW`, `RESOLVED` ou `DISMISSED`) e, opcionalmente, `adminNote`, uma anotação interna de até 2.000 caracteres.
+- `POST /admin/reports/:reportId/remove-listing` retira o anúncio denunciado e resolve a denúncia; exige a denúncia em `UNDER_REVIEW` e as permissões `VIEW_REPORTS` + `MODERATE_LISTINGS`.
+- `POST /admin/reports/:reportId/remove-profile` desativa o perfil denunciado, retira seus anúncios e resolve a denúncia; exige `UNDER_REVIEW` e as permissões `VIEW_REPORTS` + `MANAGE_USERS`.
+
+As rotas administrativas de consulta e análise exigem `VIEW_REPORTS`. Relatos, status e anotações ficam persistidos; anotações internas não são exibidas no fluxo público. As operações de remoção são transacionais e só podem ser feitas pela equipe administrativa com as permissões específicas.
+
 ### `GET /favorites`
 
 Exige `Authorization: Bearer <accessToken>`. Lista os anúncios aprovados que o usuário autenticado salvou, mais recentes primeiro. O retorno contém `{ "items": [...] }`, com `listingId`, `propertyId`, dados de preço e características do imóvel, `location`, `media` e `favoritedAt`.
@@ -139,6 +158,27 @@ Exige autenticação e adiciona o anúncio aprovado aos favoritos do usuário. A
 ### `DELETE /favorites/:listingId`
 
 Exige autenticação e remove o favorito do usuário autenticado. Retorna `204 No Content`; remover um anúncio que não está salvo não gera erro. Um UUID inválido retorna `400`.
+
+### Manifestações de interesse
+
+Todas as rotas abaixo exigem `Authorization: Bearer <accessToken>`.
+
+- `PUT /interests/:listingId` registra a manifestação no anúncio aprovado e retorna `listingId`, `status`, `createdAt` e `updatedAt`. A operação é idempotente; uma manifestação retirada pode ser enviada novamente e volta para `PENDING`.
+- `GET /interests/mine/:listingId` consulta a manifestação da conta autenticada para um anúncio ou retorna `null` quando ainda não existe.
+- `DELETE /interests/:listingId` retira a manifestação com status `WITHDRAWN`, preservando o registro; retorna `204 No Content`.
+- `GET /interests/received` lista as manifestações recebidas nos anúncios do proprietário autenticado, incluindo dados básicos do interessado, datas e status.
+- `GET /interests/listings/:listingId` lista os interessados de um anúncio específico e só pode ser consultada pelo proprietário.
+- `PATCH /interests/listings/:listingId/:userId/status` atualiza a situação como proprietário, com `{ "status": "IN_CONVERSATION" | "ACCEPTED" | "REJECTED" }`. A conversa pode começar quando o status está `PENDING`; aceite ou recusa podem ocorrer a partir de `PENDING` ou `IN_CONVERSATION`. O proprietário não pode reabrir estados finais; o interessado pode reenviar uma manifestação retirada com `PUT`.
+
+Os status possíveis são `PENDING`, `IN_CONVERSATION`, `ACCEPTED`, `REJECTED` e `WITHDRAWN`. A migration `add_interest_status` adiciona o status e a data de atualização sem apagar manifestações existentes.
+
+### Avaliações de experiência de moradia
+
+- `GET /reviews/users/:userId` lista as avaliações públicas recebidas pelo perfil, a média geral e a quantidade.
+- `GET /reviews/eligible-contracts` exige autenticação e lista os contratos do usuário como inquilino que podem receber avaliação.
+- `POST /reviews` exige autenticação e recebe `contractId`, notas inteiras de 1 a 5 para `cleanliness`, `condition`, `location`, `communication`, `value` e `overall`, além de um comentário de 20 a 1.000 caracteres.
+
+Para publicar, o usuário autenticado precisa ser o inquilino do contrato; a locação deve estar `ACTIVE` ou `TERMINATED` e a data de início já deve ter ocorrido. O anunciante é definido pelo contrato no servidor, não pelo corpo da requisição. Não é permitido avaliar a si mesmo ou publicar mais de uma avaliação por contrato. Avaliações são imutáveis após publicadas; a constraint única do contrato também protege contra envios simultâneos duplicados.
 
 ### `PATCH /properties/:listingId/status`
 
@@ -314,6 +354,14 @@ Resposta `201 Created`:
 ```
 
 Os dados do imóvel, endereço, anúncio e referências das imagens são persistidos nas tabelas `properties`, `residences`, `listings` e `listing_media`, criadas pela migration `add_property_schema`.
+
+### Documentos de contratos
+
+- `GET /rental-contracts/:contractId/documents` lista os documentos do contrato.
+- `POST /rental-contracts/:contractId/documents` recebe `multipart/form-data` com `file` e `documentType` (`SIGNED_CONTRACT`, `IDENTITY_DOCUMENT`, `PROOF_OF_ADDRESS` ou `OTHER`).
+- `GET /rental-contracts/:contractId/documents/:documentId/download` baixa o arquivo.
+
+As três rotas exigem autenticação e só permitem acesso ao proprietário ou inquilino daquele contrato. São aceitos PDF, PNG e JPEG de até 10 MB. Os arquivos são validados pelo conteúdo, criptografados com AES-256-GCM e armazenados fora da pasta pública; configure `CONTRACT_DOCUMENTS_ENCRYPTION_KEY` e mantenha `CONTRACT_DOCUMENTS_DIR` em um volume privado persistente.
 
 ### `POST /auth/admin/login`
 
