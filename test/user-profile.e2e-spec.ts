@@ -46,6 +46,12 @@ describe('PATCH /users/me (e2e)', () => {
       .post('/students')
       .send(student)
       .expect(201);
+    // O login exige e-mail confirmado; o fluxo do link é coberto em
+    // email-verification.e2e-spec.ts.
+    await prisma.user.update({
+      where: { id: registration.body.userId as string },
+      data: { emailVerified: true },
+    });
     const login = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: student.email, password })

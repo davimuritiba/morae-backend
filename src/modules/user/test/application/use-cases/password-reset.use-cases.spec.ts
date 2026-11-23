@@ -57,6 +57,7 @@ describe('password reset use cases', () => {
       cpf: Cpf.create('529.982.247-25'),
       passwordHash: 'hashed:senha-antiga',
     });
+    user.verifyEmail();
     await users.save(user);
   });
 

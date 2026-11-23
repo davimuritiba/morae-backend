@@ -32,6 +32,7 @@ describe('AuthController user login', () => {
       cpf: Cpf.create('529.982.247-25'),
       passwordHash: 'hashed:senha-segura-123',
     });
+    user.verifyEmail();
     await users.save(user);
     controller = new AuthController(
       new LoginUseCase(users, hasher),
