@@ -79,6 +79,34 @@ describe('Verificação de e-mail (e2e)', () => {
     expect(await emailVerified(userId)).toBe(true);
   });
 
+  it('só deixa entrar depois de confirmar o e-mail', async () => {
+    await register();
+    const login = () =>
+      http()
+        .post('/auth/login')
+        .send({ email: EMAIL, password: studentBody.password });
+
+    const blocked = await login().expect(403);
+    expect(blocked.body.code).toBe('EMAIL_NOT_VERIFIED');
+    expect(blocked.body.accessToken).toBeUndefined();
+
+    // Senha errada continua genérica: não revela que a conta existe.
+    await http()
+      .post('/auth/login')
+      .send({ email: EMAIL, password: 'senha-errada-123' })
+      .expect(401);
+
+    const [message] = await waitForMessages(EMAIL, 1);
+    const token = await verificationTokenFrom(message.ID);
+    await http()
+      .post('/email-verification/confirm')
+      .send({ token })
+      .expect(204);
+
+    const allowed = await login().expect(201);
+    expect(allowed.body.accessToken).toEqual(expect.any(String));
+  });
+
   it('não aceita o mesmo link duas vezes', async () => {
     await register();
     const [message] = await waitForMessages(EMAIL, 1);

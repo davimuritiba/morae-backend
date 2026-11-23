@@ -64,7 +64,9 @@ describe('Chat (e2e)', () => {
         email,
         cpf: validCpf(cpfCounter),
         passwordHash,
-        emailVerified,
+        // O login exige e-mail confirmado; o "pendente" perde a confirmação
+        // depois (como quem troca de e-mail no perfil).
+        emailVerified: true,
         updatedAt: new Date(),
       },
     });
@@ -74,6 +76,12 @@ describe('Chat (e2e)', () => {
       .send({ email, password: PASSWORD })
       .expect(201);
     expect(response.body.tokenType).toBe('Bearer');
+    if (!emailVerified) {
+      await prisma.user.update({
+        where: { id },
+        data: { emailVerified: false },
+      });
+    }
     return { id, token: response.body.accessToken as string };
   }
 

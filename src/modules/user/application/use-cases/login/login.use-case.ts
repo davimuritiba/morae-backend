@@ -1,5 +1,6 @@
 import { Hasher } from '../../ports/hasher.port.js';
 import { AccountStatus } from '../../../domain/enums/account-status.enum.js';
+import { EmailNotVerifiedError } from '../../../domain/errors/email-not-verified.error.js';
 import { InvalidCredentialsError } from '../../../domain/errors/invalid-credentials.error.js';
 import { UserRepository } from '../../../domain/repositories/user.repository.js';
 import { Email } from '../../../domain/value-objects/email.vo.js';
@@ -22,6 +23,12 @@ export class LoginUseCase {
       !(await this.hasher.compare(input.password, user.passwordHash))
     ) {
       throw new InvalidCredentialsError();
+    }
+
+    // Conta criada pelo cadastro só entra depois de confirmar o e-mail pelo
+    // link enviado (POST /email-verification/confirm).
+    if (!user.emailVerified) {
+      throw new EmailNotVerifiedError();
     }
 
     return {
