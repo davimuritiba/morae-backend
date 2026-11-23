@@ -8,6 +8,8 @@ import type {
 } from '../../../../../shared/infra/database/generated/prisma/client.js';
 import type { User } from '../../../domain/entities/user.entity.js';
 import { AccountStatus } from '../../../domain/enums/account-status.enum.js';
+import { resolveAccountType } from '../../../domain/enums/account-type.enum.js';
+import type { AccountType } from '../../../domain/enums/account-type.enum.js';
 import { CpfAlreadyInUseError } from '../../../domain/errors/cpf-already-in-use.error.js';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error.js';
 import {
@@ -138,6 +140,25 @@ export class PrismaUserRepository extends UserRepository {
       where: { email: email.value },
     });
     return row ? UserMapper.toDomain(row) : null;
+  }
+
+  async findAccountType(userId: string): Promise<AccountType> {
+    const profiles = await this.db.client.user.findUnique({
+      where: { id: userId },
+      select: {
+        student: { select: { id: true } },
+        propertyOwner: { select: { id: true } },
+        administrator: { select: { id: true } },
+      },
+    });
+
+    return resolveAccountType({
+      student: profiles?.student !== null && profiles?.student !== undefined,
+      propertyOwner:
+        profiles?.propertyOwner !== null && profiles?.propertyOwner !== undefined,
+      administrator:
+        profiles?.administrator !== null && profiles?.administrator !== undefined,
+    });
   }
 
   async existsByEmail(email: Email): Promise<boolean> {

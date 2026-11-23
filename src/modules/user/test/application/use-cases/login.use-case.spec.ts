@@ -1,5 +1,6 @@
 import { LoginUseCase } from '../../../application/use-cases/login/login.use-case.js';
 import { EmailNotVerifiedError } from '../../../domain/errors/email-not-verified.error.js';
+import { AccountType } from '../../../domain/enums/account-type.enum.js';
 import { InvalidCredentialsError } from '../../../domain/errors/invalid-credentials.error.js';
 import { User } from '../../../domain/entities/user.entity.js';
 import { Cpf } from '../../../domain/value-objects/cpf.vo.js';
@@ -41,6 +42,7 @@ describe('LoginUseCase', () => {
       name: 'Maria Silva',
       email: 'maria@ufal.br',
       status: 'ACTIVE',
+      accountType: AccountType.STUDENT_SEEKER,
     });
   });
 

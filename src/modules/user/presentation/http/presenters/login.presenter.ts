@@ -5,6 +5,7 @@ export interface LoginResponse {
   name: string;
   email: string;
   status: LoginOutput['status'];
+  accountType: LoginOutput['accountType'];
   accessToken: string;
   tokenType: 'Bearer';
 }
@@ -16,6 +17,7 @@ export class LoginPresenter {
       name: output.name,
       email: output.email,
       status: output.status,
+      accountType: output.accountType,
       accessToken,
       tokenType: 'Bearer',
     };

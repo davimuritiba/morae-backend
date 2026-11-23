@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { AuthTokenService } from '../../../../shared/infra/auth/auth-token.service.js';
 import { PrismaService } from '../../../../shared/infra/database/prisma.service.js';
+import { resolveAccountType } from '../../domain/enums/account-type.enum.js';
 
 const GOOGLE_AUTHORIZATION_ENDPOINT =
   'https://accounts.google.com/o/oauth2/v2/auth';
@@ -237,6 +238,11 @@ export class GoogleOAuthService {
 
       const user = await transaction.user.findUnique({
         where: { id: loginCode.userId },
+        include: {
+          student: { select: { id: true } },
+          propertyOwner: { select: { id: true } },
+          administrator: { select: { id: true } },
+        },
       });
       if (!user || user.status !== 'ACTIVE') {
         throw new ForbiddenException('Esta conta Moraê não está ativa.');
@@ -249,6 +255,11 @@ export class GoogleOAuthService {
       name: user.name,
       email: user.email,
       status: user.status,
+      accountType: resolveAccountType({
+        student: user.student !== null,
+        propertyOwner: user.propertyOwner !== null,
+        administrator: user.administrator !== null,
+      }),
       accessToken: await this.tokens.sign(user.id),
       tokenType: 'Bearer' as const,
     };

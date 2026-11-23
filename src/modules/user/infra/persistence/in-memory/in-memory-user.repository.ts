@@ -1,4 +1,6 @@
 import type { User } from '../../../domain/entities/user.entity.js';
+import { AccountType } from '../../../domain/enums/account-type.enum.js';
+import type { AccountType as AccountTypeValue } from '../../../domain/enums/account-type.enum.js';
 import { CpfAlreadyInUseError } from '../../../domain/errors/cpf-already-in-use.error.js';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error.js';
 import {
@@ -13,6 +15,7 @@ import type { Email } from '../../../domain/value-objects/email.vo.js';
 export class InMemoryUserRepository extends UserRepository {
   // Público para os testes inspecionarem o que foi salvo.
   readonly items: User[] = [];
+  readonly accountTypes = new Map<string, AccountTypeValue>();
 
   findAll(): Promise<User[]> {
     return Promise.resolve([...this.items]);
@@ -51,6 +54,12 @@ export class InMemoryUserRepository extends UserRepository {
   findByEmail(email: Email): Promise<User | null> {
     return Promise.resolve(
       this.items.find((u) => u.email.equals(email)) ?? null,
+    );
+  }
+
+  findAccountType(userId: string): Promise<AccountTypeValue> {
+    return Promise.resolve(
+      this.accountTypes.get(userId) ?? AccountType.STUDENT_SEEKER,
     );
   }
 

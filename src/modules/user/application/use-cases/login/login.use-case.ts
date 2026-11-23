@@ -36,6 +36,7 @@ export class LoginUseCase {
       name: user.name,
       email: user.email.value,
       status: user.status,
+      accountType: await this.users.findAccountType(user.id),
     };
   }
 }
