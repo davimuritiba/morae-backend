@@ -83,6 +83,14 @@ const students = [
   ],
 ];
 
+// Respostas do questionário de convivência, na ordem de `students`.
+// Alimentam o cálculo de compatibilidade (módulo matching).
+const compatibilityAnswers = [
+  ['FROM_21_TO_23', 'YES', 'VERY_ORGANIZED', 'RARELY', 'NO', 'NO', 'DAILY', 'QUIET', ['CALM', 'STUDIOUS']],
+  ['FROM_23_TO_01', 'SOMETIMES', 'SOMEWHAT', 'FREQUENTLY', 'NO', 'YES', 'WEEKLY', 'BUSY', ['SOCIAL', 'ADVENTUROUS']],
+  ['FROM_21_TO_23', 'YES', 'VERY_ORGANIZED', 'SOMETIMES', 'NO', 'NO', 'WEEKLY', 'INDIFFERENT', ['STUDIOUS', 'CALM']],
+];
+
 const admins = [
   [
     '77777777-7777-4777-8777-777777777777',
@@ -160,6 +168,20 @@ async function main() {
           JSON.stringify(schedule),
           timestamp,
         ],
+      );
+    }
+
+    for (const [index, [studentId]] of students.entries()) {
+      const [sleepTime, studyAtHome, organization, visitors, smoking, pets, cleaning, environment, lifestyle] =
+        compatibilityAnswers[index];
+      await client.query(
+        `INSERT INTO student_compatibility_answers (student_id, sleep_time, study_at_home, organization, visitors, smoking, pets, cleaning, environment, lifestyle, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::"LifestyleTrait"[], $11)
+         ON CONFLICT (student_id) DO UPDATE SET sleep_time = EXCLUDED.sleep_time, study_at_home = EXCLUDED.study_at_home,
+           organization = EXCLUDED.organization, visitors = EXCLUDED.visitors, smoking = EXCLUDED.smoking,
+           pets = EXCLUDED.pets, cleaning = EXCLUDED.cleaning, environment = EXCLUDED.environment,
+           lifestyle = EXCLUDED.lifestyle, updated_at = EXCLUDED.updated_at`,
+        [studentId, sleepTime, studyAtHome, organization, visitors, smoking, pets, cleaning, environment, lifestyle, timestamp],
       );
     }
 

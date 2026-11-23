@@ -1,16 +1,15 @@
 import type { StudentRepository } from '../../../../user/domain/repositories/student.repository.js';
 import type { UserRepository } from '../../../../user/domain/repositories/user.repository.js';
 import { CompatibilityProfileNotFoundError } from '../../../domain/errors/compatibility-profile-not-found.error.js';
-import { CompatibilityCalculator } from '../../../domain/services/compatibility-calculator.js';
+import type {
+  CompatibilityCalculation,
+  CompatibilityCalculator,
+} from '../../../domain/services/compatibility-calculator.js';
 
 export interface CompareCompatibilityInput { viewerUserId: string; targetUserId: string; }
-export interface CompareCompatibilityOutput {
+export interface CompareCompatibilityOutput extends CompatibilityCalculation {
   viewer: { userId: string; name: string };
   target: { userId: string; name: string };
-  score: number;
-  summary: string;
-  commonPoints: { field: string; message: string }[];
-  differences: { field: string; message: string }[];
 }
 
 export class CompareCompatibilityUseCase {
