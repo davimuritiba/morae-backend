@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import express from 'express';
 import { AppModule, ObserveInstrument } from './app.module.js';
-import { getPropertyUploadsDirectory } from './modules/property/infra/media/property-media-storage.js';
+import { PublicImageDirectory } from './shared/infra/media/public-image-directory.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -23,16 +23,23 @@ async function bootstrap() {
     );
   }
   app.enableCors();
-  app.use(
-    '/uploads/listings',
-    express.static(getPropertyUploadsDirectory(), {
-      dotfiles: 'deny',
-      index: false,
-      setHeaders: (response) => {
-        response.setHeader('X-Content-Type-Options', 'nosniff');
-      },
-    }),
-  );
+  // Fotos de anúncios e de perfil. Os arquivos têm nome aleatório e nunca
+  // mudam de conteúdo, então podem ficar em cache por bastante tempo.
+  for (const folder of ['listings', 'users'] as const) {
+    const directory = new PublicImageDirectory(folder);
+    app.use(
+      `/uploads/${folder}`,
+      express.static(directory.path, {
+        dotfiles: 'deny',
+        index: false,
+        maxAge: '30d',
+        immutable: true,
+        setHeaders: (response) => {
+          response.setHeader('X-Content-Type-Options', 'nosniff');
+        },
+      }),
+    );
+  }
   await app.listen(process.env.PORT ?? 3000);
 }
 await bootstrap();

@@ -51,7 +51,7 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
    | `PORT`                         | não         | Porta HTTP. Padrão: `3000`.                                                                                                                              |
    | `JWT_SECRET`                   | **sim**     | Chave aleatória exclusiva com pelo menos 32 bytes, usada para assinar tokens de acesso. Não reutilize em produção.                                       |
    | `JWT_EXPIRES_IN_MINUTES`        | não         | Validade do token de acesso em minutos. Padrão: `60`.                                                                                                    |
-   | `UPLOADS_DIR`                   | não         | Diretório persistente das fotos dos anúncios. Padrão: `./uploads`.                                                                                       |
+   | `UPLOADS_DIR`                   | não         | Diretório persistente das fotos dos anúncios e de perfil. Padrão: `./uploads`.                                                                           |
    | `CONTRACT_DOCUMENTS_ENCRYPTION_KEY` | para documentos | Chave exclusiva de 32 bytes em base64 para criptografar documentos de contratos em repouso. Gere com `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`. |
    | `CONTRACT_DOCUMENTS_DIR`        | não         | Diretório persistente e privado dos documentos. Padrão: `./private-documents`; não use o diretório público `UPLOADS_DIR`.                               |
    | `TEST_DATABASE_URL`            | não         | Banco dos testes de integração e e2e. O nome precisa terminar em `_test`. Se omitida, usa o banco da `DATABASE_URL` com o sufixo `_test` (`morae_test`). |
@@ -265,6 +265,10 @@ Senha e estado da conta não são editáveis por esta rota. O CPF não é devolv
 Quando o e-mail muda, ele volta para `emailVerified: false` e a API envia um novo link de verificação.
 Duplicidades de e-mail/CPF respondem `409`; formatos inválidos respondem `422`; corpo vazio responde `422`.
 
+### `PUT /users/me/photo` e `DELETE /users/me/photo`
+
+Envia ou remove a foto de perfil da conta autenticada. O `PUT` recebe `multipart/form-data` com o arquivo no campo `photo`: JPEG, PNG ou WEBP de até 5 MB, validado pelo conteúdo. A foto fica em `UPLOADS_DIR/users`, é servida em `/uploads/users/<nome>` e substitui a anterior, cujo arquivo é apagado. As duas rotas respondem `200` com os dados da conta (o mesmo formato de `GET /users/me`), com `photoUrl` relativo à API, como `/uploads/users/<uuid>.png`, ou `null`. Sem arquivo ou com imagem inválida: `400`; arquivo acima de 5 MB: `413`.
+
 ### `POST /auth/login`
 
 Autentica um usuário ativo e emite um token de acesso (JWT), válido por `JWT_EXPIRES_IN_MINUTES` (60 por padrão). Envie-o no header `Authorization: Bearer <accessToken>` das rotas protegidas.
@@ -343,6 +347,19 @@ Antes de pagar, o proprietário cria um convite de locação para um e-mail de u
 Configure no `.env` `MERCADO_PAGO_CLIENT_ID`, `MERCADO_PAGO_CLIENT_SECRET`, `MERCADO_PAGO_REDIRECT_URI`, `MERCADO_PAGO_WEBHOOK_URL` (endpoint público HTTPS), `MERCADO_PAGO_WEBHOOK_SECRET` e `PAYMENT_TOKEN_ENCRYPTION_KEY` (32 bytes em base64). Os tokens OAuth dos proprietários são criptografados com AES-256-GCM em repouso. `MERCADO_PAGO_SANDBOX` é `true` por padrão; só defina `false` após configurar e validar credenciais e webhook de produção. Use credenciais de teste para validar o fluxo antes de habilitar cobranças reais.
 
 Fotos aceitas: JPEG, PNG ou WEBP, até 5 MB cada. Os arquivos são validados pelo conteúdo, recebem nomes aleatórios e ficam em `UPLOADS_DIR/listings`; podem ser acessados em `/uploads/listings/<nome>`. Configure `UPLOADS_DIR` para um volume persistente nos ambientes hospedados.
+
+Depois de publicado, o dono do anúncio gerencia as fotos por estas rotas, que exigem login. Todas respondem com `{ "status", "photos": [{ "id", "type", "url", "position" }] }`: o status do anúncio e as fotos já na ordem final. A primeira foto é a capa, e o anúncio fica sempre com 1 a 10 fotos.
+
+**Moderação:** adicionar fotos a um anúncio `APPROVED` ou `ARCHIVED` o devolve para `PENDING`, e ele sai da busca até um administrador aprovar de novo. O arquivado entra na regra porque o dono pode restaurá-lo direto para `APPROVED`. Anúncios `PENDING`, `IN_REVIEW` ou `REJECTED` mantêm o status. Remover e reordenar fotos nunca mudam o status.
+
+| Método | Rota | O que faz |
+| ------ | ---- | --------- |
+| GET | `/properties/:listingId/photos` | Lista as fotos (qualquer status, menos removido) |
+| POST | `/properties/:listingId/photos` | Adiciona fotos ao fim (`multipart/form-data`, campo `photos`) |
+| PUT | `/properties/:listingId/photos/order` | Reordena: `{ "photoIds": ["uuid", ...] }` com todas as fotos, na nova ordem |
+| DELETE | `/properties/:listingId/photos/:photoId` | Remove a foto e apaga o arquivo |
+
+Anúncio de outra pessoa, removido ou inexistente: `404` `LISTING_NOT_FOUND`. Foto que não é do anúncio: `404` `LISTING_PHOTO_NOT_FOUND`. Passar de 10 fotos ou remover a última: `422` `INVALID_LISTING_PHOTO_COUNT`. Ordem que não contém cada foto exatamente uma vez: `422` `INVALID_LISTING_PHOTO_ORDER`. Edições simultâneas do mesmo anúncio são aplicadas uma de cada vez. `GET /properties/:listingId` também passa a devolver o `id` de cada mídia.
 
 Resposta `201 Created`:
 

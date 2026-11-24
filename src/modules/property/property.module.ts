@@ -12,6 +12,12 @@ import { ListingRepository } from './domain/repositories/listing.repository.js';
 import { OwnerListingRepository } from './domain/repositories/owner-listing.repository.js';
 import { PropertyRepository } from './domain/repositories/property.repository.js';
 import { PropertyMediaStorage } from './infra/media/property-media-storage.js';
+import { Logger } from '../../shared/application/logger.js';
+import { NestLoggerAdapter } from '../../shared/infra/nest-logger.js';
+import { ListingPhotoStorage } from './application/ports/listing-photo-storage.port.js';
+import { ManageListingPhotosUseCase } from './application/use-cases/manage-listing-photos/manage-listing-photos.use-case.js';
+import { OwnerListingMediaRepository } from './domain/repositories/owner-listing-media.repository.js';
+import { PrismaOwnerListingMediaRepository } from './infra/persistence/repositories/prisma-owner-listing-media.repository.js';
 import { PrismaAdminListingRepository } from './infra/persistence/repositories/prisma-admin-listing.repository.js';
 import { PrismaListingRepository } from './infra/persistence/repositories/prisma-listing.repository.js';
 import { PrismaOwnerListingRepository } from './infra/persistence/repositories/prisma-owner-listing.repository.js';
@@ -24,6 +30,18 @@ import { PropertyController } from './presentation/http/controllers/property.con
     PrismaPropertyRepository,
     { provide: PropertyRepository, useExisting: PrismaPropertyRepository },
     PropertyMediaStorage,
+    { provide: ListingPhotoStorage, useExisting: PropertyMediaStorage },
+    { provide: Logger, useFactory: () => new NestLoggerAdapter('PropertyModule') },
+    { provide: OwnerListingMediaRepository, useClass: PrismaOwnerListingMediaRepository },
+    {
+      provide: ManageListingPhotosUseCase,
+      useFactory: (
+        media: OwnerListingMediaRepository,
+        storage: ListingPhotoStorage,
+        logger: Logger,
+      ) => new ManageListingPhotosUseCase(media, storage, logger),
+      inject: [OwnerListingMediaRepository, ListingPhotoStorage, Logger],
+    },
     {
       provide: PublishPropertyUseCase,
       useFactory: (properties: PropertyRepository) =>

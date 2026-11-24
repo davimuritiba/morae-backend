@@ -8,6 +8,21 @@ describe('PhotoUrl', () => {
     );
   });
 
+  it('aceita o caminho de uma foto enviada ao servidor', () => {
+    const path = '/uploads/users/0b7e2f4c-9a1d-4c3e-8f5a-2d6b7c8e9f01.webp';
+
+    expect(PhotoUrl.create(path).value).toBe(path);
+  });
+
+  it.each([
+    '/uploads/users/../../etc/passwd',
+    '/uploads/users/nao-e-uuid.jpg',
+    '/uploads/users/0b7e2f4c-9a1d-4c3e-8f5a-2d6b7c8e9f01.svg',
+    '/uploads/listings/0b7e2f4c-9a1d-4c3e-8f5a-2d6b7c8e9f01.jpg',
+  ])('rejeita caminho local fora do padrão %j', (raw) => {
+    expect(() => PhotoUrl.create(raw)).toThrow(InvalidPhotoUrlError);
+  });
+
   it.each([
     'javascript:alert(1)',
     'data:image/png;base64,AAAA',

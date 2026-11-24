@@ -2,7 +2,7 @@ import { randomBytes, randomUUID, createCipheriv, createDecipheriv } from 'node:
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { getPropertyUploadsDirectory } from '../../../property/infra/media/property-media-storage.js';
+import { getPublicUploadsRoot } from '../../../../shared/infra/media/public-image-directory.js';
 
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const ENVELOPE_MAGIC = Buffer.from('MORAEDOC1');
@@ -74,7 +74,7 @@ function privateDirectory(): string {
   const directory = resolve(
     process.env.CONTRACT_DOCUMENTS_DIR?.trim() || join(process.cwd(), 'private-documents'),
   );
-  const publicDirectory = resolve(getPropertyUploadsDirectory());
+  const publicDirectory = resolve(getPublicUploadsRoot());
   const normalizedDirectory =
     process.platform === 'win32' ? directory.toLowerCase() : directory;
   const normalizedPublicDirectory =

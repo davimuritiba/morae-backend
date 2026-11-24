@@ -17,6 +17,9 @@ import { UpdateMyProfileUseCase } from './application/use-cases/update-my-profil
 import { UserProfileDetailsRepository } from './domain/repositories/user-profile-details.repository.js';
 import { PrismaUserProfileDetailsRepository } from './infra/persistence/repositories/prisma-user-profile-details.repository.js';
 import { UpdateUserProfileUseCase } from './application/use-cases/update-user-profile/update-user-profile.use-case.js';
+import { ChangeUserPhotoUseCase } from './application/use-cases/change-user-photo/change-user-photo.use-case.js';
+import { UserPhotoStorage } from './application/ports/user-photo-storage.port.js';
+import { LocalUserPhotoStorage } from './infra/services/local-user-photo-storage.js';
 import { LoginUseCase } from './application/use-cases/login/login.use-case.js';
 import { LoginAdministratorUseCase } from './application/use-cases/login-administrator/login-administrator.use-case.js';
 import { RequestPasswordResetUseCase } from './application/use-cases/request-password-reset/request-password-reset.use-case.js';
@@ -350,6 +353,13 @@ const HOUR_MS = 60 * 60 * 1000;
         logger: Logger,
       ) => new UpdateUserProfileUseCase(users, sendEmailVerification, logger),
       inject: [UserRepository, SendEmailVerificationUseCase, Logger],
+    },
+    { provide: UserPhotoStorage, useClass: LocalUserPhotoStorage },
+    {
+      provide: ChangeUserPhotoUseCase,
+      useFactory: (users: UserRepository, storage: UserPhotoStorage, logger: Logger) =>
+        new ChangeUserPhotoUseCase(users, storage, logger),
+      inject: [UserRepository, UserPhotoStorage, Logger],
     },
     {
       provide: ListAdminUsersUseCase,

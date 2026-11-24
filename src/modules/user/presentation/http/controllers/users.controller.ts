@@ -1,12 +1,20 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
   Patch,
+  Put,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { MAX_IMAGE_BYTES } from '../../../../../shared/infra/media/public-image-directory.js';
+import { ChangeUserPhotoUseCase } from '../../../application/use-cases/change-user-photo/change-user-photo.use-case.js';
 import { CurrentUserId } from '../../../../../shared/presentation/decorators/current-user-id.decorator.js';
 import { JwtAuthGuard } from '../../../../../shared/presentation/guards/jwt-auth.guard.js';
 import { GetUserByIdUseCase } from '../../../application/use-cases/get-user-by-id/get-user-by-id.use-case.js';
@@ -31,7 +39,35 @@ export class UsersController {
     private readonly updateUserProfile: UpdateUserProfileUseCase,
     private readonly getUserProfile: GetUserProfileUseCase,
     private readonly updateMyProfile: UpdateMyProfileUseCase,
+    private readonly changeUserPhoto: ChangeUserPhotoUseCase,
   ) {}
+
+  // Envia a foto de perfil (multipart, campo "photo"): JPEG, PNG ou WEBP de
+  // até 5 MB. Substitui a foto anterior.
+  @Put('me/photo')
+  @UseInterceptors(
+    FileInterceptor('photo', { limits: { fileSize: MAX_IMAGE_BYTES, files: 1 } }),
+  )
+  async uploadMyPhoto(
+    @CurrentUserId() userId: string,
+    @UploadedFile() photo: Express.Multer.File | undefined,
+  ): Promise<GetUserByIdResponse> {
+    if (!photo) {
+      throw new BadRequestException('Envie a foto no campo "photo".');
+    }
+    return GetUserByIdPresenter.toHttp(
+      await this.changeUserPhoto.execute({ userId, file: photo }),
+    );
+  }
+
+  @Delete('me/photo')
+  async removeMyPhoto(
+    @CurrentUserId() userId: string,
+  ): Promise<GetUserByIdResponse> {
+    return GetUserByIdPresenter.toHttp(
+      await this.changeUserPhoto.execute({ userId, file: null }),
+    );
+  }
 
   // Rotas de /me antes das de /:id, para "me" não ser lido como id.
   @Get('me/profile')

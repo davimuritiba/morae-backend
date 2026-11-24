@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UploadedFiles,
@@ -19,6 +20,10 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { ManageListingPhotosUseCase } from '../../../application/use-cases/manage-listing-photos/manage-listing-photos.use-case.js';
+import type { ListingPhotos } from '../../../domain/repositories/owner-listing-media.repository.js';
+import { MAX_IMAGE_BYTES } from '../../../../../shared/infra/media/public-image-directory.js';
+import { ReorderListingPhotosDto } from '../dtos/reorder-listing-photos.dto.js';
 import { GetListingUseCase } from '../../../application/use-cases/get-listing/get-listing.use-case.js';
 import { ManageOwnerListingUseCase } from '../../../application/use-cases/manage-owner-listing/manage-owner-listing.use-case.js';
 import { RemoveOwnerListingUseCase } from '../../../application/use-cases/manage-owner-listing/remove-owner-listing.use-case.js';
@@ -42,7 +47,62 @@ export class PropertyController {
     private readonly manageOwnerListing: ManageOwnerListingUseCase,
     private readonly removeOwnerListing: RemoveOwnerListingUseCase,
     private readonly mediaStorage: PropertyMediaStorage,
+    private readonly listingPhotos: ManageListingPhotosUseCase,
   ) {}
+
+  // ─── Fotos de um anúncio (só o dono) ─────────────────────────────────────
+  // Todas respondem com { status, photos }: o status do anúncio e a lista
+  // atualizada de fotos, já na ordem final. Adicionar fotos a um anúncio
+  // aprovado ou arquivado o devolve para a moderação (PENDING).
+
+  @Get(':listingId/photos')
+  @UseGuards(JwtAuthGuard)
+  listPhotos(
+    @CurrentUserId() userId: string,
+    @Param('listingId', ParseUUIDPipe) listingId: string,
+  ): Promise<ListingPhotos> {
+    return this.listingPhotos.list({ userId, listingId });
+  }
+
+  // Adiciona fotos (multipart, campo "photos") ao fim da lista.
+  @Post(':listingId/photos')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FilesInterceptor('photos', 10, {
+      limits: { fileSize: MAX_IMAGE_BYTES, files: 10 },
+    }),
+  )
+  addPhotos(
+    @CurrentUserId() userId: string,
+    @Param('listingId', ParseUUIDPipe) listingId: string,
+    @UploadedFiles() photos: Express.Multer.File[] = [],
+  ): Promise<ListingPhotos> {
+    if (photos.length === 0) {
+      throw new BadRequestException('Envie as fotos no campo "photos".');
+    }
+    return this.listingPhotos.add({ userId, listingId, files: photos });
+  }
+
+  @Put(':listingId/photos/order')
+  @UseGuards(JwtAuthGuard)
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  reorderPhotos(
+    @CurrentUserId() userId: string,
+    @Param('listingId', ParseUUIDPipe) listingId: string,
+    @Body() input: ReorderListingPhotosDto,
+  ): Promise<ListingPhotos> {
+    return this.listingPhotos.reorder({ userId, listingId, photoIds: input.photoIds });
+  }
+
+  @Delete(':listingId/photos/:photoId')
+  @UseGuards(JwtAuthGuard)
+  removePhoto(
+    @CurrentUserId() userId: string,
+    @Param('listingId', ParseUUIDPipe) listingId: string,
+    @Param('photoId', ParseUUIDPipe) photoId: string,
+  ): Promise<ListingPhotos> {
+    return this.listingPhotos.remove({ userId, listingId, photoId });
+  }
 
   @Get()
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
