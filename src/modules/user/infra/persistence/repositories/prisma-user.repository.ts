@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '../../../../../shared/infra/database/generated/prisma/client.js';
 import { rethrowUniqueViolation } from '../../../../../shared/infra/database/prisma-errors.js';
 import { PrismaTransactionContext } from '../../../../../shared/infra/database/prisma-transaction-context.js';
 import { isUuid } from '../../../../../shared/infra/database/uuid.js';
@@ -199,12 +200,19 @@ export class PrismaUserRepository extends UserRepository {
   // contra duplicados em requisições simultâneas.
   async save(user: User): Promise<void> {
     const data = UserMapper.toPersistence(user);
+    const writeData = {
+      ...data,
+      profileData:
+        user.profileData === null
+          ? Prisma.JsonNull
+          : (user.profileData as Prisma.InputJsonValue),
+    };
 
     try {
       await this.db.client.user.upsert({
         where: { id: data.id },
-        create: data,
-        update: data,
+        create: writeData,
+        update: writeData,
       });
     } catch (error) {
       rethrowUniqueViolation(error, UNIQUE_ERRORS);

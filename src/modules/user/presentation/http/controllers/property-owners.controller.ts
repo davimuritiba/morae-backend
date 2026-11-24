@@ -28,6 +28,7 @@ export class PropertyOwnersController {
       cpf: dto.cpf,
       password: dto.password,
       phone: dto.phone ?? null,
+      profileData: dto.profileData,
       profileDetails: profileDetailsInput(dto.profileDetails),
     });
     return RegisterPropertyOwnerPresenter.toHttp(output);

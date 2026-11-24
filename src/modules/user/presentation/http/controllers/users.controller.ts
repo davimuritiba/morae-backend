@@ -1,3 +1,4 @@
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import {
   BadRequestException,
   Body,
@@ -22,6 +23,8 @@ import { GetUserProfileUseCase } from '../../../application/use-cases/get-user-p
 import type { UserProfileView } from '../../../application/use-cases/get-user-profile/get-user-profile.output.js';
 import { UpdateMyProfileUseCase } from '../../../application/use-cases/update-my-profile/update-my-profile.use-case.js';
 import { UpdateUserProfileUseCase } from '../../../application/use-cases/update-user-profile/update-user-profile.use-case.js';
+import { StudentRepository } from '../../../domain/repositories/student.repository.js';
+import { PropertyOwnerRepository } from '../../../domain/repositories/property-owner.repository.js';
 import { profileDetailsInput } from '../dtos/profile-details.dto.js';
 import { UpdateMyProfileDto } from '../dtos/update-my-profile.dto.js';
 import { UpdateUserProfileDto } from '../dtos/update-user-profile.dto.js';
@@ -37,6 +40,8 @@ export class UsersController {
   constructor(
     private readonly getUserById: GetUserByIdUseCase,
     private readonly updateUserProfile: UpdateUserProfileUseCase,
+    private readonly students: StudentRepository,
+    private readonly propertyOwners: PropertyOwnerRepository,
     private readonly getUserProfile: GetUserProfileUseCase,
     private readonly updateMyProfile: UpdateMyProfileUseCase,
     private readonly changeUserPhoto: ChangeUserPhotoUseCase,
@@ -98,10 +103,17 @@ export class UsersController {
   }
 
   @Get('me')
-  async me(@CurrentUserId() viewerId: string): Promise<GetUserByIdResponse> {
-    return GetUserByIdPresenter.toHttp(
-      await this.getUserById.execute(viewerId),
-    );
+  async me(
+    @CurrentUserId() viewerId: string,
+  ): Promise<GetUserByIdResponse & { role: string }> {
+    const [output, student, owner] = await Promise.all([
+      this.getUserById.execute(viewerId),
+      this.students.findByUserId(viewerId),
+      this.propertyOwners.findByUserId(viewerId),
+    ]);
+    const role = student ? (owner ? 'ofertante' : 'estudante') : 'proprietario';
+
+    return { ...GetUserByIdPresenter.toHttp(output), role };
   }
 
   @Get(':id')

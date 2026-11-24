@@ -149,11 +149,23 @@ model User {
   // DDD + número, sem código do país (VO Phone).
   phone         String?       @db.VarChar(11)
   photoUrl      String?       @map("photo_url") @db.VarChar(2048)
+  profileData   Json?         @map("profile_data")
   emailVerified Boolean       @default(false) @map("email_verified")
   status        AccountStatus @default(ACTIVE)
   createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime      @map("updated_at") @db.Timestamptz(3)
 
+  student                 Student?
+  propertyOwner           PropertyOwner?
+  administrator           Administrator?
+  propertyCohabitancies   PropertyCohabitant[]
+  emailVerificationTokens EmailVerificationToken[]
+  createdChats            Chat[]
+  chatParticipations      ChatParticipant[]
+  sentMessages            Message[]
+  favorites               Favorite[]
+  passwordResetTokens     PasswordResetToken[]
+  interests               Interest[]
   student                   Student?
   profileDetails            UserProfileDetails?
   propertyOwner             PropertyOwner?

@@ -77,6 +77,7 @@ export class RegisterStudentUseCase implements UseCase<
       cpf,
       passwordHash,
       phone,
+      profileData: input.profileData,
     });
 
     const student = Student.create({

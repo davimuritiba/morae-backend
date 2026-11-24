@@ -20,7 +20,12 @@ export interface UserProps {
   status: AccountStatus;
   createdAt: Date;
   updatedAt: Date;
+  profileData?: UserProfileData | null;
 }
+
+export type UserProfileValue =
+  string | number | boolean | null | UserProfileValue[];
+export type UserProfileData = Record<string, UserProfileValue>;
 
 export interface CreateUserProps {
   name: string;
@@ -29,6 +34,7 @@ export interface CreateUserProps {
   passwordHash: string;
   phone?: Phone | null;
   photoUrl?: PhotoUrl | null;
+  profileData?: Record<string, unknown> | null;
 }
 
 export class User {
@@ -56,6 +62,7 @@ export class User {
       photoUrl: input.photoUrl ?? null,
       emailVerified: false,
       status: AccountStatus.ACTIVE,
+      profileData: User.sanitizeProfileData(input.profileData),
       createdAt: now,
       updatedAt: now,
     });
@@ -100,6 +107,10 @@ export class User {
 
   get status(): AccountStatus {
     return this.#props.status;
+  }
+
+  get profileData(): UserProfileData | null {
+    return this.#props.profileData ?? null;
   }
 
   get createdAt(): Date {
@@ -161,6 +172,33 @@ export class User {
       [AccountStatus.ACTIVE, AccountStatus.SUSPENDED],
       AccountStatus.DEACTIVATED,
     );
+  }
+
+  private static sanitizeProfileData(
+    data?: Record<string, unknown> | null,
+  ): UserProfileData | null {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+
+    const safe: UserProfileData = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (/password|cpf|document|proof|photos?|token/i.test(key)) continue;
+      if (
+        value === null ||
+        ['string', 'number', 'boolean'].includes(typeof value)
+      ) {
+        safe[key] = value as UserProfileValue;
+      } else if (
+        Array.isArray(value) &&
+        value.every(
+          (item) =>
+            item === null ||
+            ['string', 'number', 'boolean'].includes(typeof item),
+        )
+      ) {
+        safe[key] = value as UserProfileValue[];
+      }
+    }
+    return Object.keys(safe).length ? safe : null;
   }
 
   private static validateName(raw: string): string {

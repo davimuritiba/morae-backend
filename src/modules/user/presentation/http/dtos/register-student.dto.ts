@@ -8,6 +8,7 @@ import {
   IsInt,
   IsISO8601,
   IsOptional,
+  IsObject,
   IsString,
   MaxLength,
   ArrayMinSize,
@@ -95,6 +96,8 @@ export class RegisterStudentDto {
   advertisesProperty?: boolean;
 
   @IsOptional()
+  @IsObject()
+  profileData?: Record<string, unknown>;
   @ValidateNested()
   @Type(() => ProfileDetailsDto)
   profileDetails?: ProfileDetailsDto;

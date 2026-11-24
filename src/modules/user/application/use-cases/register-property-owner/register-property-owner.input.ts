@@ -5,6 +5,7 @@ export interface RegisterPropertyOwnerInput {
   cpf: string;
   password: string;
   phone?: string | null;
+  profileData?: Record<string, unknown>;
   // Dados pessoais e preferências de moradia (todos opcionais).
   profileDetails?: UserProfileDetailsInput;
 }
