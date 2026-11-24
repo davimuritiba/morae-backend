@@ -30,7 +30,7 @@ describe('Properties endpoints (e2e)', () => {
     await resetDatabase(prisma);
   });
 
-  async function createUser(seed: number): Promise<string> {
+  async function createUser(seed: number, asPropertyOwner = true): Promise<string> {
     const id = randomUUID();
     await prisma.user.create({
       data: {
@@ -42,6 +42,11 @@ describe('Properties endpoints (e2e)', () => {
         updatedAt: new Date(),
       },
     });
+    if (asPropertyOwner) {
+      await prisma.propertyOwner.create({
+        data: { id: randomUUID(), userId: id, updatedAt: new Date() },
+      });
+    }
     return id;
   }
 
@@ -54,6 +59,32 @@ describe('Properties endpoints (e2e)', () => {
     return app.get(AuthTokenService).sign(listing.property.owner.userId);
   }
 
+  // Menor PNG válido: o armazenamento confere o conteúdo, não só a extensão.
+  const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+  // POST /properties exige login e envia os dados como multipart, com ao
+  // menos uma foto. O dono é a conta autenticada.
+  async function publishAs(
+    userId: string,
+    fields: Record<string, string | number>,
+  ): Promise<{ propertyId: string; listingId: string }> {
+    const token = await app.get(AuthTokenService).sign(userId);
+    const req = request(app.getHttpServer())
+      .post('/properties')
+      .set('Authorization', `Bearer ${token}`);
+    for (const [name, value] of Object.entries({
+      amenities: '[]',
+      parkingSpaces: 0,
+      ...fields,
+    })) {
+      void req.field(name, String(value));
+    }
+    const { body } = await req
+      .attach('photos', PNG, { filename: 'foto.png', contentType: 'image/png' })
+      .expect(201);
+    return body as { propertyId: string; listingId: string };
+  }
+
   async function createListing(input: {
     seed: number;
     city: string;
@@ -61,33 +92,23 @@ describe('Properties endpoints (e2e)', () => {
     status: 'APPROVED' | 'PENDING';
   }): Promise<string> {
     const ownerUserId = await createUser(input.seed);
-    const cohabitantId = await createUser(input.seed + 1);
-    const ownerId = randomUUID();
-    await prisma.propertyOwner.create({
-      data: { id: ownerId, userId: ownerUserId, updatedAt: new Date() },
-    });
 
-    const { body } = await request(app.getHttpServer())
-      .post('/properties')
-      .send({
-        ownerId,
-        cohabitantIds: [cohabitantId],
-        postalCode: '57035120',
-        state: 'AL',
-        street: 'Rua de teste',
-        number: String(input.seed),
-        city: input.city,
-        neighborhood: input.neighborhood,
-        housingType: 'APARTMENT',
-        bedrooms: 2,
-        bathrooms: 1,
-        title: `Moradia ${input.neighborhood}`,
-        description: 'Imóvel de teste disponível para aluguel residencial.',
-        rent: 850,
-        contractType: 'PROPERTY_SHARING',
-        minimumStay: 'SIX_MONTHS',
-      })
-      .expect(201);
+    const body = await publishAs(ownerUserId, {
+      postalCode: '57035120',
+      state: 'AL',
+      street: 'Rua de teste',
+      number: String(input.seed),
+      city: input.city,
+      neighborhood: input.neighborhood,
+      housingType: 'APARTMENT',
+      bedrooms: 2,
+      bathrooms: 1,
+      title: `Moradia ${input.neighborhood}`,
+      description: 'Imóvel de teste disponível para aluguel residencial.',
+      rent: 850,
+      contractType: 'PROPERTY_SHARING',
+      minimumStay: 'SIX_MONTHS',
+    });
 
     if (input.status === 'APPROVED') {
       await prisma.listing.update({
@@ -101,33 +122,23 @@ describe('Properties endpoints (e2e)', () => {
 
   it('201: publica o imóvel com o anúncio pendente de moderação', async () => {
     const ownerUserId = await createUser(1);
-    const cohabitantId = await createUser(2);
-    const ownerId = randomUUID();
-    await prisma.propertyOwner.create({
-      data: { id: ownerId, userId: ownerUserId, updatedAt: new Date() },
-    });
 
-    const { body } = await request(app.getHttpServer())
-      .post('/properties')
-      .send({
-        ownerId,
-        cohabitantIds: [cohabitantId],
-        postalCode: '57035120',
-        state: 'AL',
-        street: 'Rua Professor Sandoval Arroxelas',
-        number: '120',
-        city: 'Maceió',
-        neighborhood: 'Ponta Verde',
-        housingType: 'APARTMENT',
-        bedrooms: 3,
-        bathrooms: 2,
-        title: 'Quarto em apartamento perto da UFAL',
-        description: 'Apartamento mobiliado, com internet e área de estudos.',
-        rent: 900,
-        contractType: 'PROPERTY_SHARING',
-        minimumStay: 'SIX_MONTHS',
-      })
-      .expect(201);
+    const body = await publishAs(ownerUserId, {
+      postalCode: '57035120',
+      state: 'AL',
+      street: 'Rua Professor Sandoval Arroxelas',
+      number: '120',
+      city: 'Maceió',
+      neighborhood: 'Ponta Verde',
+      housingType: 'APARTMENT',
+      bedrooms: 3,
+      bathrooms: 2,
+      title: 'Quarto em apartamento perto da UFAL',
+      description: 'Apartamento mobiliado, com internet e área de estudos.',
+      rent: 900,
+      contractType: 'PROPERTY_SHARING',
+      minimumStay: 'SIX_MONTHS',
+    });
 
     const listing = await prisma.listing.findUnique({
       where: { id: body.listingId },
@@ -136,6 +147,19 @@ describe('Properties endpoints (e2e)', () => {
       propertyId: body.propertyId,
       status: 'PENDING',
     });
+  });
+
+  it('403: impede estudante sem perfil de proprietário de publicar anúncio', async () => {
+    const studentId = await createUser(2, false);
+    const token = await app.get(AuthTokenService).sign(studentId);
+
+    await request(app.getHttpServer())
+      .post('/properties')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403)
+      .expect(({ body }) =>
+        expect(body.code).toBe('ACCOUNT_TYPE_ACCESS_DENIED'),
+      );
   });
 
   it('GET /properties filtra por cidade, bairro e estado, sem diferenciar caixa', async () => {
@@ -226,10 +250,17 @@ describe('Properties endpoints (e2e)', () => {
       .set(auth)
       .send({ status: 'ARCHIVED' })
       .expect(200)
-      .expect(({ body }) => expect(body).toMatchObject({ listingId, status: 'ARCHIVED' }));
+      .expect(({ body }) =>
+        expect(body).toMatchObject({ listingId, status: 'ARCHIVED' }),
+      );
 
-    expect((await prisma.listing.findUnique({ where: { id: listingId } }))?.status).toBe('ARCHIVED');
-    await request(app.getHttpServer()).get('/properties?location=Farol').expect(200).expect([]);
+    expect(
+      (await prisma.listing.findUnique({ where: { id: listingId } }))?.status,
+    ).toBe('ARCHIVED');
+    await request(app.getHttpServer())
+      .get('/properties?location=Farol')
+      .expect(200)
+      .expect([]);
 
     await request(app.getHttpServer())
       .patch(`/properties/${listingId}/status`)
@@ -238,10 +269,13 @@ describe('Properties endpoints (e2e)', () => {
       .expect(200)
       .expect(({ body }) => expect(body.status).toBe('APPROVED'));
 
-    await request(app.getHttpServer()).get('/properties?location=Farol').expect(200).expect(({ body }) => {
-      expect(body).toHaveLength(1);
-      expect(body[0].listingId).toBe(listingId);
-    });
+    await request(app.getHttpServer())
+      .get('/properties?location=Farol')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toHaveLength(1);
+        expect(body[0].listingId).toBe(listingId);
+      });
   });
 
   it('impede que outro usuário arquive anúncio alheio', async () => {
@@ -277,15 +311,150 @@ describe('Properties endpoints (e2e)', () => {
       .set(auth)
       .expect(204);
 
-    expect((await prisma.listing.findUnique({ where: { id: listingId } }))?.status).toBe('REMOVED');
-    await request(app.getHttpServer()).get(`/properties/${listingId}`).expect(404);
-    await request(app.getHttpServer()).get('/properties?location=Farol').expect(200).expect([]);
+    expect(
+      (await prisma.listing.findUnique({ where: { id: listingId } }))?.status,
+    ).toBe('REMOVED');
+    await request(app.getHttpServer())
+      .get(`/properties/${listingId}`)
+      .expect(404);
+    await request(app.getHttpServer())
+      .get('/properties?location=Farol')
+      .expect(200)
+      .expect([]);
 
     await request(app.getHttpServer())
       .patch(`/properties/${listingId}/status`)
       .set(auth)
       .send({ status: 'APPROVED' })
       .expect(409)
-      .expect(({ body }) => expect(body.code).toBe('INVALID_LISTING_TRANSITION'));
+      .expect(({ body }) =>
+        expect(body.code).toBe('INVALID_LISTING_TRANSITION'),
+      );
+  });
+
+  async function adminAuth(
+    seed: number,
+    permissions: string[] = ['MODERATE_LISTINGS'],
+  ): Promise<{ Authorization: string }> {
+    const userId = await createUser(seed);
+    const token = await app
+      .get(AuthTokenService)
+      .signAdministrator(userId, randomUUID(), permissions);
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  it('admin aprova anúncio pendente e ele passa a aparecer na busca', async () => {
+    const listingId = await createListing({
+      seed: 90,
+      city: 'Maceió',
+      neighborhood: 'Jatiúca',
+      status: 'PENDING',
+    });
+    await request(app.getHttpServer())
+      .get('/properties?location=Jatiúca')
+      .expect(200)
+      .expect([]);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(await adminAuth(91))
+      .send({ status: 'APPROVED' })
+      .expect(200)
+      .expect(({ body }) =>
+        expect(body).toMatchObject({ listingId, status: 'APPROVED' }),
+      );
+
+    await request(app.getHttpServer())
+      .get('/properties?location=Jatiúca')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toHaveLength(1);
+        expect(body[0].listingId).toBe(listingId);
+      });
+  });
+
+  it('admin rejeita anúncio pendente, que fica fora da busca e pode ser aprovado depois', async () => {
+    const listingId = await createListing({
+      seed: 92,
+      city: 'Maceió',
+      neighborhood: 'Pajuçara',
+      status: 'PENDING',
+    });
+    const auth = await adminAuth(93);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'REJECTED' })
+      .expect(200)
+      .expect(({ body }) => expect(body.status).toBe('REJECTED'));
+    await request(app.getHttpServer())
+      .get(`/properties/${listingId}`)
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'APPROVED' })
+      .expect(200)
+      .expect(({ body }) => expect(body.status).toBe('APPROVED'));
+  });
+
+  it('moderação recusa transição inválida, status desconhecido e anúncio inexistente', async () => {
+    const listingId = await createListing({
+      seed: 94,
+      city: 'Maceió',
+      neighborhood: 'Gruta',
+      status: 'APPROVED',
+    });
+    const auth = await adminAuth(95);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'REJECTED' })
+      .expect(409)
+      .expect(({ body }) =>
+        expect(body.code).toBe('INVALID_LISTING_TRANSITION'),
+      );
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'REMOVED' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${randomUUID()}/status`)
+      .set(auth)
+      .send({ status: 'APPROVED' })
+      .expect(404);
+  });
+
+  it('moderação exige token de administrador com MODERATE_LISTINGS', async () => {
+    const listingId = await createListing({
+      seed: 96,
+      city: 'Maceió',
+      neighborhood: 'Farol',
+      status: 'PENDING',
+    });
+    const route = `/admin/listings/${listingId}/status`;
+
+    await request(app.getHttpServer())
+      .patch(route)
+      .send({ status: 'APPROVED' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .patch(route)
+      .set('Authorization', `Bearer ${await tokenForListingOwner(listingId)}`)
+      .send({ status: 'APPROVED' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .patch(route)
+      .set(await adminAuth(97, ['MANAGE_USERS']))
+      .send({ status: 'APPROVED' })
+      .expect(403);
+
+    expect(
+      (await prisma.listing.findUnique({ where: { id: listingId } }))?.status,
+    ).toBe('PENDING');
   });
 });

@@ -1,0 +1,108 @@
+# Moraê em produção: Postgres, API e o frontend servido pelo Caddy (HTTPS).
+#
+# Na VPS, os dois repositórios ficam lado a lado:
+#   /opt/morae/morae-backend   (este repositório)
+#   /opt/morae/pds-morae       (frontend)
+# e os comandos rodam dentro de morae-backend/deploy. Passo a passo no
+# README.md desta pasta. As variáveis vêm do arquivo deploy/.env.
+
+name: morae
+
+x-database-url: &database-url postgresql://morae:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no deploy/.env}@postgres:5432/morae?schema=public
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: morae
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: morae
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U morae -d morae']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Sem "ports": o banco não fica exposto na internet.
+
+  # Aplica as migrations e sai. A API só sobe depois que ele termina bem.
+  # Também é usado para rodar o seed (veja o README).
+  migrate:
+    build:
+      context: ..
+      target: build
+    command: ['npx', '--no-install', 'prisma', 'migrate', 'deploy']
+    environment:
+      DATABASE_URL: *database-url
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?defina SEED_ADMIN_PASSWORD no deploy/.env}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:?defina SEED_USER_PASSWORD no deploy/.env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    build:
+      context: ..
+      target: runtime
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DATABASE_URL: *database-url
+      # Atrás do Caddy: lê o IP real do X-Forwarded-For.
+      TRUST_PROXY: 1
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no deploy/.env}
+      JWT_EXPIRES_IN_MINUTES: ${JWT_EXPIRES_IN_MINUTES:-60}
+      APP_WEB_URL: https://${DOMAIN}
+      EMAIL_VERIFICATION_TTL_HOURS: ${EMAIL_VERIFICATION_TTL_HOURS:-24}
+      SMTP_HOST: ${SMTP_HOST:?defina SMTP_HOST no deploy/.env}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:?defina MAIL_FROM no deploy/.env}
+      OBSERVE_APP_KEY: ${OBSERVE_APP_KEY:-}
+      OBSERVE_APP_SECRET: ${OBSERVE_APP_SECRET:-}
+      MERCADO_PAGO_CLIENT_ID: ${MERCADO_PAGO_CLIENT_ID:-}
+      MERCADO_PAGO_CLIENT_SECRET: ${MERCADO_PAGO_CLIENT_SECRET:-}
+      MERCADO_PAGO_REDIRECT_URI: https://api.${DOMAIN}/payments/mercado-pago/callback
+      MERCADO_PAGO_WEBHOOK_URL: ${MERCADO_PAGO_WEBHOOK_URL:-}
+      MERCADO_PAGO_WEBHOOK_SECRET: ${MERCADO_PAGO_WEBHOOK_SECRET:-}
+      PAYMENT_TOKEN_ENCRYPTION_KEY: ${PAYMENT_TOKEN_ENCRYPTION_KEY:-}
+      MERCADO_PAGO_SANDBOX: ${MERCADO_PAGO_SANDBOX:-true}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Build de produção do frontend servido pelo Caddy, que também faz o HTTPS
+  # (certificados automáticos do Let's Encrypt) e repassa api.DOMAIN para a API.
+  web:
+    build:
+      context: .
+      dockerfile: web.Dockerfile
+      additional_contexts:
+        frontend: ${FRONTEND_DIR:-../../pds-morae}
+      args:
+        VITE_API_URL: https://api.${DOMAIN:?defina DOMAIN no deploy/.env}
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

@@ -63,7 +63,9 @@ describe('POST /property-owners (e2e)', () => {
     ['senha curta', { password: 'curta' }],
     ['campo extra', { role: 'ADMIN' }],
   ])('rejeita %s sem criar conta', async (_label, override) => {
-    await post({ ...validBody, ...override }).expect(override.role ? 400 : 422);
+    await post({ ...validBody, ...override }).expect(
+      'role' in override ? 400 : 422,
+    );
     expect(await prisma.user.count()).toBe(0);
     expect(await prisma.propertyOwner.count()).toBe(0);
   });

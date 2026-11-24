@@ -135,6 +135,10 @@ describe('POST /students (e2e)', () => {
   it.each([
     ['corpo vazio', {}],
     ['campo obrigatório ausente', { ...validBody, email: undefined }],
+    [
+      'respostas de compatibilidade ausentes',
+      { ...validBody, compatibilityAnswers: undefined },
+    ],
     ['campo não declarado no DTO', { ...validBody, role: 'ADMIN' }],
     ['período como texto', { ...validBody, period: '3' }],
     ['data que não existe', { ...validBody, expectedGraduation: '2027-02-30' }],

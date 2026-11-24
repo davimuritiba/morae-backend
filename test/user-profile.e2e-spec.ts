@@ -4,6 +4,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/shared/infra/database/prisma.service.js';
+import { compatibilityAnswers } from './helpers/compatibility-answers.js';
 import { resetDatabase } from './integration/reset-database.js';
 
 const password = 'senha-segura-123';
@@ -17,6 +18,7 @@ const student = {
   course: 'Ciência da Computação',
   period: 3,
   expectedGraduation: '2027-12-15',
+  compatibilityAnswers,
 };
 
 describe('PATCH /users/me (e2e)', () => {
@@ -44,6 +46,12 @@ describe('PATCH /users/me (e2e)', () => {
       .post('/students')
       .send(student)
       .expect(201);
+    // O login exige e-mail confirmado; o fluxo do link é coberto em
+    // email-verification.e2e-spec.ts.
+    await prisma.user.update({
+      where: { id: registration.body.userId as string },
+      data: { emailVerified: true },
+    });
     const login = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: student.email, password })

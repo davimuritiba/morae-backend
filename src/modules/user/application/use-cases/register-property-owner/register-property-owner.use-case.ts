@@ -11,6 +11,8 @@ import { Cpf } from '../../../domain/value-objects/cpf.vo.js';
 import { Email } from '../../../domain/value-objects/email.vo.js';
 import { Password } from '../../../domain/value-objects/password.vo.js';
 import { Phone } from '../../../domain/value-objects/phone.vo.js';
+import { UserProfileDetails } from '../../../domain/entities/user-profile-details.entity.js';
+import type { UserProfileDetailsRepository } from '../../../domain/repositories/user-profile-details.repository.js';
 import type { Hasher } from '../../ports/hasher.port.js';
 import type { SendEmailVerificationUseCase } from '../send-email-verification/send-email-verification.use-case.js';
 import type { RegisterPropertyOwnerInput } from './register-property-owner.input.js';
@@ -27,6 +29,8 @@ export class RegisterPropertyOwnerUseCase implements UseCase<
     private readonly unitOfWork: UnitOfWork,
     private readonly sendEmailVerification: SendEmailVerificationUseCase,
     private readonly logger: Logger,
+    // Opcional para manter compatíveis os testes que não usam dados de perfil.
+    private readonly profileDetails?: UserProfileDetailsRepository,
   ) {}
 
   async execute(
@@ -36,6 +40,10 @@ export class RegisterPropertyOwnerUseCase implements UseCase<
     const cpf = Cpf.create(input.cpf);
     const password = Password.create(input.password);
     const phone = input.phone ? Phone.create(input.phone) : null;
+    // Valida os dados de perfil antes de tocar no banco; o id real vem depois.
+    const draftDetails = input.profileDetails
+      ? UserProfileDetails.create('', input.profileDetails)
+      : null;
 
     if (await this.users.existsByEmail(email))
       throw new EmailAlreadyInUseError();
@@ -51,8 +59,14 @@ export class RegisterPropertyOwnerUseCase implements UseCase<
     });
     const propertyOwner = PropertyOwner.create({ userId: user.id });
 
+    const details =
+      draftDetails && !draftDetails.isEmpty && this.profileDetails
+        ? UserProfileDetails.restore(user.id, draftDetails.data, draftDetails.updatedAt)
+        : null;
+
     await this.unitOfWork.run(async () => {
       await this.users.save(user);
+      if (details) await this.profileDetails?.save(details);
       await this.propertyOwners.save(propertyOwner);
     });
 

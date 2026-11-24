@@ -1,4 +1,6 @@
 import { LoginUseCase } from '../../../application/use-cases/login/login.use-case.js';
+import { EmailNotVerifiedError } from '../../../domain/errors/email-not-verified.error.js';
+import { AccountType } from '../../../domain/enums/account-type.enum.js';
 import { InvalidCredentialsError } from '../../../domain/errors/invalid-credentials.error.js';
 import { User } from '../../../domain/entities/user.entity.js';
 import { Cpf } from '../../../domain/value-objects/cpf.vo.js';
@@ -6,13 +8,15 @@ import { Email } from '../../../domain/value-objects/email.vo.js';
 import { InMemoryUserRepository } from '../../../infra/persistence/in-memory/in-memory-user.repository.js';
 import { FakeHasher } from '../../fakes/fake-hasher.js';
 
-function makeUser() {
-  return User.create({
+function makeUser({ emailVerified = true } = {}) {
+  const user = User.create({
     name: 'Maria Silva',
     email: Email.create('maria@ufal.br'),
     cpf: Cpf.create('529.982.247-25'),
     passwordHash: 'hashed:senha-segura-123',
   });
+  if (emailVerified) user.verifyEmail();
+  return user;
 }
 
 describe('LoginUseCase', () => {
@@ -38,6 +42,7 @@ describe('LoginUseCase', () => {
       name: 'Maria Silva',
       email: 'maria@ufal.br',
       status: 'ACTIVE',
+      accountType: AccountType.STUDENT_SEEKER,
     });
   });
 
@@ -62,6 +67,25 @@ describe('LoginUseCase', () => {
         email: 'maria@ufal.br',
         password: 'senha-segura-123',
       }),
+    ).rejects.toBeInstanceOf(InvalidCredentialsError);
+  });
+
+  it('bloqueia quem ainda não confirmou o e-mail', async () => {
+    await users.save(makeUser({ emailVerified: false }));
+
+    await expect(
+      sut.execute({
+        email: 'maria@ufal.br',
+        password: 'senha-segura-123',
+      }),
+    ).rejects.toBeInstanceOf(EmailNotVerifiedError);
+  });
+
+  it('com senha errada, não revela que o e-mail está pendente', async () => {
+    await users.save(makeUser({ emailVerified: false }));
+
+    await expect(
+      sut.execute({ email: 'maria@ufal.br', password: 'senha-incorreta' }),
     ).rejects.toBeInstanceOf(InvalidCredentialsError);
   });
 });

@@ -10,6 +10,7 @@ import {
   verificationTokenFrom,
   waitForMessages,
 } from './integration/mailpit.js';
+import { compatibilityAnswers } from './helpers/compatibility-answers.js';
 import { resetDatabase } from './integration/reset-database.js';
 
 const EMAIL = 'maria@ufal.br';
@@ -23,6 +24,7 @@ const studentBody = {
   course: 'Ciência da Computação',
   period: 3,
   expectedGraduation: '2027-12-15',
+  compatibilityAnswers,
 };
 
 // Fluxo completo: o cadastro envia o e-mail de verdade para o Mailpit, o
@@ -75,6 +77,34 @@ describe('Verificação de e-mail (e2e)', () => {
       .expect(204);
 
     expect(await emailVerified(userId)).toBe(true);
+  });
+
+  it('só deixa entrar depois de confirmar o e-mail', async () => {
+    await register();
+    const login = () =>
+      http()
+        .post('/auth/login')
+        .send({ email: EMAIL, password: studentBody.password });
+
+    const blocked = await login().expect(403);
+    expect(blocked.body.code).toBe('EMAIL_NOT_VERIFIED');
+    expect(blocked.body.accessToken).toBeUndefined();
+
+    // Senha errada continua genérica: não revela que a conta existe.
+    await http()
+      .post('/auth/login')
+      .send({ email: EMAIL, password: 'senha-errada-123' })
+      .expect(401);
+
+    const [message] = await waitForMessages(EMAIL, 1);
+    const token = await verificationTokenFrom(message.ID);
+    await http()
+      .post('/email-verification/confirm')
+      .send({ token })
+      .expect(204);
+
+    const allowed = await login().expect(201);
+    expect(allowed.body.accessToken).toEqual(expect.any(String));
   });
 
   it('não aceita o mesmo link duas vezes', async () => {

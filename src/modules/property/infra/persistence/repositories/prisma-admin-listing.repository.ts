@@ -4,6 +4,7 @@ import {
   type Prisma,
 } from '../../../../../shared/infra/database/generated/prisma/client.js';
 import { PrismaService } from '../../../../../shared/infra/database/prisma.service.js';
+import { isUuid } from '../../../../../shared/infra/database/uuid.js';
 import { ListingStatus } from '../../../domain/enums/listing-status.enum.js';
 import type {
   AdminListingPage,
@@ -152,6 +153,8 @@ export class PrismaAdminListingRepository extends AdminListingRepository {
           },
         },
       ];
+      // Busca direta pelo id do anúncio quando o termo é um UUID.
+      if (isUuid(query.search)) where.OR.push({ id: query.search });
     }
 
     const [rows, total] = await Promise.all([
@@ -179,5 +182,17 @@ export class PrismaAdminListingRepository extends AdminListingRepository {
       include: ADMIN_LISTING_INCLUDE,
     });
     return row ? toAdminRecord(row) : null;
+  }
+
+  async transitionStatus(
+    listingId: string,
+    from: readonly ListingStatus[],
+    to: ListingStatus,
+  ): Promise<boolean> {
+    const { count } = await this.prisma.listing.updateMany({
+      where: { id: listingId, status: { in: from.map(toPrismaStatus) } },
+      data: { status: toPrismaStatus(to), updatedAt: new Date() },
+    });
+    return count > 0;
   }
 }

@@ -99,7 +99,7 @@ export class StudentMapper {
     };
   }
 
-  private static compatibilityAnswersToDomain(
+  static compatibilityAnswersToDomain(
     raw: PrismaStudentCompatibilityAnswers,
   ): StudentCompatibilityAnswers {
     return StudentCompatibilityAnswers.restore({

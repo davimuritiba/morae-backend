@@ -11,7 +11,10 @@ export async function resetDatabase(prisma: PrismaService): Promise<void> {
       users, students, student_profiles, property_owners, administrators,
       email_verification_tokens,
       residences, properties, property_cohabitants, listings, listing_media,
-      chats, chat_participants, messages
+      chats, chat_participants, messages,
+      password_reset_tokens, student_compatibility_answers, favorites, interests,
+      payment_transactions, rental_contracts, payment_provider_connections,
+      payment_oauth_states
     CASCADE
   `;
 }

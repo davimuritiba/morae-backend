@@ -2,7 +2,13 @@
 
 API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A proposta é conectar estudantes que procuram moradia ou colegas de quarto a proprietários de imóveis, com verificação de vínculo acadêmico, compatibilidade entre perfis, anúncios, visitas, chat e contratos.
 
+> **Situação em 20/11/2026:** cadastro e autenticação de estudantes, publicação de imóveis/vagas e gerenciamento administrativo de contas estão conectados ao PostgreSQL. Os anúncios são enviados para análise e suas imagens ficam em armazenamento local configurável.
+
 > **Autenticação:** o cadastro e login de usuários, a verificação de e-mail e a redefinição de senha por link enviado por e-mail estão disponíveis. O fluxo de redefinição usa tokens de uso único, armazenados como hash e com expiração configurável.
+
+> **Login Google:** o OAuth Google está disponível para contas Moraê já cadastradas. A primeira entrada exige um e-mail Google verificado que corresponda ao e-mail da conta Moraê; o usuário deve completar o cadastro normal antes de usar este login. Configure as variáveis `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `GOOGLE_OAUTH_REDIRECT_URI`, e cadastre a mesma URL de callback no Google Cloud Console. O callback redireciona para `APP_WEB_URL/login`.
+
+> **Login SIGAA:** ainda não está integrado. A UFAL precisa fornecer uma integração oficial de SSO para aplicações externas (OIDC, SAML ou CAS). A Moraê não solicita nem encaminha senhas do SIGAA.
 
 ## Stack
 
@@ -43,6 +49,11 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
    | ------------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
    | `DATABASE_URL`                 | **sim**     | Conexão com o PostgreSQL. Com o `docker-compose.yml` do projeto: `postgresql://morae:morae@localhost:5432/morae?schema=public`.                          |
    | `PORT`                         | não         | Porta HTTP. Padrão: `3000`.                                                                                                                              |
+   | `JWT_SECRET`                   | **sim**     | Chave aleatória exclusiva com pelo menos 32 bytes, usada para assinar tokens de acesso. Não reutilize em produção.                                       |
+   | `JWT_EXPIRES_IN_MINUTES`        | não         | Validade do token de acesso em minutos. Padrão: `60`.                                                                                                    |
+   | `UPLOADS_DIR`                   | não         | Diretório persistente das fotos dos anúncios e de perfil. Padrão: `./uploads`.                                                                           |
+   | `CONTRACT_DOCUMENTS_ENCRYPTION_KEY` | para documentos | Chave exclusiva de 32 bytes em base64 para criptografar documentos de contratos em repouso. Gere com `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`. |
+   | `CONTRACT_DOCUMENTS_DIR`        | não         | Diretório persistente e privado dos documentos. Padrão: `./private-documents`; não use o diretório público `UPLOADS_DIR`.                               |
    | `TEST_DATABASE_URL`            | não         | Banco dos testes de integração e e2e. O nome precisa terminar em `_test`. Se omitida, usa o banco da `DATABASE_URL` com o sufixo `_test` (`morae_test`). |
    | `OBSERVE_APP_KEY`              | não         | Chave do [NestJS Observe](https://observe.nestjs.com). Sem ela, a telemetria é descartada e a app funciona normalmente.                                  |
    | `OBSERVE_APP_SECRET`           | não         | Segredo pareado com a chave acima.                                                                                                                       |
@@ -52,6 +63,9 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
    | `SMTP_USER` / `SMTP_PASSWORD`  | não         | Credenciais do SMTP. O Mailpit não exige.                                                                                                                |
    | `MAIL_FROM`                    | **sim**     | Remetente dos e-mails, ex.: `"Moraê <nao-responda@morae.local>"`.                                                                                        |
    | `APP_WEB_URL`                  | **sim**     | Endereço do front-end; usado nos links de verificação e redefinição de senha.                                                                           |
+   | `GOOGLE_CLIENT_ID`              | não         | Client ID OAuth criado no Google Cloud Console. Sem esta e as demais credenciais OAuth, o botão Google informa indisponibilidade.                          |
+   | `GOOGLE_CLIENT_SECRET`          | não         | Segredo OAuth mantido exclusivamente no servidor.                                                                                                       |
+   | `GOOGLE_OAUTH_REDIRECT_URI`     | não         | URL de callback registrada no Google Cloud Console, por exemplo `https://api.exemplo.com/auth/google/callback`.                                          |
    | `EMAIL_VERIFICATION_TTL_HOURS` | não         | Validade do link de verificação, em horas. Padrão: `24`.                                                                                                |
    | `PASSWORD_RESET_TTL_MINUTES`   | não         | Validade do link de redefinição de senha, em minutos. Padrão: `30`.                                                                                    |
 
@@ -123,6 +137,16 @@ npm run start:prod
 
 ## Endpoints
 
+### Denúncias
+
+- `POST /reports` exige autenticação, e o denunciante deve ter e-mail confirmado e um perfil de estudante ou ofertante com verificação `VERIFIED`. Recebe exatamente um de `targetUserId` (perfil) ou `listingId` (anúncio), `category` (`FRAUD`, `HARASSMENT`, `INAPPROPRIATE_CONTENT`, `SAFETY` ou `OTHER`) e uma descrição de 20 a 2.000 caracteres. Em denúncias de anúncio, o usuário denunciado é derivado do proprietário registrado; não é possível denunciar a própria conta ou anúncio.
+- `GET /admin/reports` lista denúncias com filtros opcionais `search`, `status`, `page` e `limit`.
+- `PATCH /admin/reports/:reportId/status` atualiza `status` (`OPEN`, `UNDER_REVIEW`, `RESOLVED` ou `DISMISSED`) e, opcionalmente, `adminNote`, uma anotação interna de até 2.000 caracteres.
+- `POST /admin/reports/:reportId/remove-listing` retira o anúncio denunciado e resolve a denúncia; exige a denúncia em `UNDER_REVIEW` e as permissões `VIEW_REPORTS` + `MODERATE_LISTINGS`.
+- `POST /admin/reports/:reportId/remove-profile` desativa o perfil denunciado, retira seus anúncios e resolve a denúncia; exige `UNDER_REVIEW` e as permissões `VIEW_REPORTS` + `MANAGE_USERS`.
+
+As rotas administrativas de consulta e análise exigem `VIEW_REPORTS`. Relatos, status e anotações ficam persistidos; anotações internas não são exibidas no fluxo público. As operações de remoção são transacionais e só podem ser feitas pela equipe administrativa com as permissões específicas.
+
 ### `GET /favorites`
 
 Exige `Authorization: Bearer <accessToken>`. Lista os anúncios aprovados que o usuário autenticado salvou, mais recentes primeiro. O retorno contém `{ "items": [...] }`, com `listingId`, `propertyId`, dados de preço e características do imóvel, `location`, `media` e `favoritedAt`.
@@ -134,6 +158,27 @@ Exige autenticação e adiciona o anúncio aprovado aos favoritos do usuário. A
 ### `DELETE /favorites/:listingId`
 
 Exige autenticação e remove o favorito do usuário autenticado. Retorna `204 No Content`; remover um anúncio que não está salvo não gera erro. Um UUID inválido retorna `400`.
+
+### Manifestações de interesse
+
+Todas as rotas abaixo exigem `Authorization: Bearer <accessToken>`.
+
+- `PUT /interests/:listingId` registra a manifestação no anúncio aprovado e retorna `listingId`, `status`, `createdAt` e `updatedAt`. A operação é idempotente; uma manifestação retirada pode ser enviada novamente e volta para `PENDING`.
+- `GET /interests/mine/:listingId` consulta a manifestação da conta autenticada para um anúncio ou retorna `null` quando ainda não existe.
+- `DELETE /interests/:listingId` retira a manifestação com status `WITHDRAWN`, preservando o registro; retorna `204 No Content`.
+- `GET /interests/received` lista as manifestações recebidas nos anúncios do proprietário autenticado, incluindo dados básicos do interessado, datas e status.
+- `GET /interests/listings/:listingId` lista os interessados de um anúncio específico e só pode ser consultada pelo proprietário.
+- `PATCH /interests/listings/:listingId/:userId/status` atualiza a situação como proprietário, com `{ "status": "IN_CONVERSATION" | "ACCEPTED" | "REJECTED" }`. A conversa pode começar quando o status está `PENDING`; aceite ou recusa podem ocorrer a partir de `PENDING` ou `IN_CONVERSATION`. O proprietário não pode reabrir estados finais; o interessado pode reenviar uma manifestação retirada com `PUT`.
+
+Os status possíveis são `PENDING`, `IN_CONVERSATION`, `ACCEPTED`, `REJECTED` e `WITHDRAWN`. A migration `add_interest_status` adiciona o status e a data de atualização sem apagar manifestações existentes.
+
+### Avaliações de experiência de moradia
+
+- `GET /reviews/users/:userId` lista as avaliações públicas recebidas pelo perfil, a média geral e a quantidade.
+- `GET /reviews/eligible-contracts` exige autenticação e lista os contratos do usuário como inquilino que podem receber avaliação.
+- `POST /reviews` exige autenticação e recebe `contractId`, notas inteiras de 1 a 5 para `cleanliness`, `condition`, `location`, `communication`, `value` e `overall`, além de um comentário de 20 a 1.000 caracteres.
+
+Para publicar, o usuário autenticado precisa ser o inquilino do contrato; a locação deve estar `ACTIVE` ou `TERMINATED` e a data de início já deve ter ocorrido. O anunciante é definido pelo contrato no servidor, não pelo corpo da requisição. Não é permitido avaliar a si mesmo ou publicar mais de uma avaliação por contrato. Avaliações são imutáveis após publicadas; a constraint única do contrato também protege contra envios simultâneos duplicados.
 
 ### `PATCH /properties/:listingId/status`
 
@@ -220,6 +265,10 @@ Senha e estado da conta não são editáveis por esta rota. O CPF não é devolv
 Quando o e-mail muda, ele volta para `emailVerified: false` e a API envia um novo link de verificação.
 Duplicidades de e-mail/CPF respondem `409`; formatos inválidos respondem `422`; corpo vazio responde `422`.
 
+### `PUT /users/me/photo` e `DELETE /users/me/photo`
+
+Envia ou remove a foto de perfil da conta autenticada. O `PUT` recebe `multipart/form-data` com o arquivo no campo `photo`: JPEG, PNG ou WEBP de até 5 MB, validado pelo conteúdo. A foto fica em `UPLOADS_DIR/users`, é servida em `/uploads/users/<nome>` e substitui a anterior, cujo arquivo é apagado. As duas rotas respondem `200` com os dados da conta (o mesmo formato de `GET /users/me`), com `photoUrl` relativo à API, como `/uploads/users/<uuid>.png`, ou `null`. Sem arquivo ou com imagem inválida: `400`; arquivo acima de 5 MB: `413`.
+
 ### `POST /auth/login`
 
 Autentica um usuário ativo e emite um token de acesso (JWT), válido por `JWT_EXPIRES_IN_MINUTES` (60 por padrão). Envie-o no header `Authorization: Bearer <accessToken>` das rotas protegidas.
@@ -250,6 +299,87 @@ Credenciais incorretas ou conta suspensa/desativada respondem `401` com `INVALID
 
 Cada conta aceita até 10 tentativas a cada 15 minutos por IP; depois disso, a API responde `429`. O limite também vale para `POST /auth/admin/login`. Como a contagem é por conta e IP, alunos na mesma rede da UFAL não bloqueiam uns aos outros.
 
+### `POST /properties`
+
+Publica um imóvel/vaga para revisão. Apenas contas com perfil de proprietário (`PROPERTY_OWNER` ou `STUDENT_OFFERER`) podem publicar. Envie `multipart/form-data` com o token de login no cabeçalho `Authorization: Bearer <JWT>`. O proprietário é associado à conta autenticada; não envie `ownerId`. Contas sem perfil de proprietário recebem `403 ACCOUNT_TYPE_ACCESS_DENIED`.
+
+Campos: `postalCode` (8 dígitos), `state`, `street`, `number`, `complement` (opcional), `city`, `neighborhood`, `housingType` (`APARTMENT`, `HOUSE`, `ROOM` ou `REPUBLIC`), `bedrooms`, `bathrooms`, `parkingSpaces`, `amenities` (JSON array), `title`, `description`, `rules` (opcional), `rent`, `condominium` (opcional), `contractType`, `minimumStay`, e de 1 a 10 arquivos `photos`.
+
+### `GET /payments`
+
+Consulta as transações em que o usuário autenticado é pagador ou recebedor. Envie `Authorization: Bearer <JWT>`. Os parâmetros opcionais `from` e `to` aceitam datas `YYYY-MM-DD` inclusivas; `status` aceita `PENDING`, `PAID`, `REJECTED`, `OVERDUE`, `CANCELLED` ou `REFUNDED`.
+
+Exemplo: `GET /payments?from=2026-11-01&to=2026-11-30&status=PAID`
+
+Resposta `200 OK`:
+
+```json
+[
+  {
+    "id": "10101010-1010-4010-8010-101010101001",
+    "description": "Aluguel · Novembro/2026",
+    "date": "2026-11-02",
+    "amountInCents": 70000,
+    "status": "PAID",
+    "paymentMethod": "PIX",
+    "direction": "INCOMING",
+    "counterpartyName": "Ana Beatriz Lima"
+  }
+]
+```
+
+O identificador do usuário vem do JWT, não de parâmetros enviados pelo cliente. Uma mesma transação aparece no histórico do pagador e do recebedor, com direções e contraparte correspondentes. A migration cria o armazenamento; `npm run db:migrate` aplica a estrutura e `npm run db:generate` atualiza o Prisma Client. O seed de desenvolvimento cria quatro transações demonstrativas para os usuários de exemplo.
+
+### Pagamento de aluguel e Mercado Pago
+
+O fluxo usa Checkout Pro no modelo Marketplace: cada proprietário conecta a própria conta Mercado Pago e recebe diretamente por ela. O checkout apresenta o aluguel e a taxa Moraê de 5% em linhas separadas; a taxa é enviada ao provedor como comissão da plataforma. Pix, cartão e boleto são oferecidos no ambiente hospedado do Mercado Pago. O Moraê não recebe nem armazena dados de cartão.
+
+Antes de pagar, o proprietário cria um convite de locação para um e-mail de usuário. O convite só fica ativo após o inquilino aceitar; a aceitação no aplicativo registra concordância, mas não substitui contrato formal assinado. Cobranças só podem ser criadas pelo inquilino de um contrato ativo, para o valor mensal salvo pelo servidor e para um período dentro da vigência. Uma cobrança pendente é reutilizada; pagamentos aprovados não podem ser rebaixados por notificações atrasadas.
+
+- `GET /rental-contracts` lista contratos do usuário autenticado.
+- `GET /rental-contracts/listings` lista anúncios mensais aprovados do proprietário autenticado.
+- `POST /rental-contracts` recebe `listingId`, `tenantEmail`, `startsAt` (`YYYY-MM-DD`), `endsAt` opcional e `dueDay` (1–28).
+- `POST /rental-contracts/:id/accept` ativa o contrato pelo aceite do inquilino. `POST /rental-contracts/:id/reject` recusa o convite; `POST /rental-contracts/:id/terminate` encerra um contrato aberto.
+- `GET /payments/mercado-pago/connection` consulta se o proprietário conectou a conta; `POST /payments/mercado-pago/connect` inicia o OAuth.
+- `POST /payments/checkout` recebe `{ "contractId": "<UUID>", "period": "AAAA-MM" }` e retorna `transactionId` e `checkoutUrl`.
+- `GET /payments/:transactionId` consulta o estado da própria transação. O `POST /webhooks/mercado-pago` valida a assinatura HMAC, consulta o pagamento diretamente no Mercado Pago e só então atualiza a persistência para pendente, aprovado, recusado, cancelado ou estornado.
+
+Configure no `.env` `MERCADO_PAGO_CLIENT_ID`, `MERCADO_PAGO_CLIENT_SECRET`, `MERCADO_PAGO_REDIRECT_URI`, `MERCADO_PAGO_WEBHOOK_URL` (endpoint público HTTPS), `MERCADO_PAGO_WEBHOOK_SECRET` e `PAYMENT_TOKEN_ENCRYPTION_KEY` (32 bytes em base64). Os tokens OAuth dos proprietários são criptografados com AES-256-GCM em repouso. `MERCADO_PAGO_SANDBOX` é `true` por padrão; só defina `false` após configurar e validar credenciais e webhook de produção. Use credenciais de teste para validar o fluxo antes de habilitar cobranças reais.
+
+Fotos aceitas: JPEG, PNG ou WEBP, até 5 MB cada. Os arquivos são validados pelo conteúdo, recebem nomes aleatórios e ficam em `UPLOADS_DIR/listings`; podem ser acessados em `/uploads/listings/<nome>`. Configure `UPLOADS_DIR` para um volume persistente nos ambientes hospedados.
+
+Depois de publicado, o dono do anúncio gerencia as fotos por estas rotas, que exigem login. Todas respondem com `{ "status", "photos": [{ "id", "type", "url", "position" }] }`: o status do anúncio e as fotos já na ordem final. A primeira foto é a capa, e o anúncio fica sempre com 1 a 10 fotos.
+
+**Moderação:** adicionar fotos a um anúncio `APPROVED` ou `ARCHIVED` o devolve para `PENDING`, e ele sai da busca até um administrador aprovar de novo. O arquivado entra na regra porque o dono pode restaurá-lo direto para `APPROVED`. Anúncios `PENDING`, `IN_REVIEW` ou `REJECTED` mantêm o status. Remover e reordenar fotos nunca mudam o status.
+
+| Método | Rota | O que faz |
+| ------ | ---- | --------- |
+| GET | `/properties/:listingId/photos` | Lista as fotos (qualquer status, menos removido) |
+| POST | `/properties/:listingId/photos` | Adiciona fotos ao fim (`multipart/form-data`, campo `photos`) |
+| PUT | `/properties/:listingId/photos/order` | Reordena: `{ "photoIds": ["uuid", ...] }` com todas as fotos, na nova ordem |
+| DELETE | `/properties/:listingId/photos/:photoId` | Remove a foto e apaga o arquivo |
+
+Anúncio de outra pessoa, removido ou inexistente: `404` `LISTING_NOT_FOUND`. Foto que não é do anúncio: `404` `LISTING_PHOTO_NOT_FOUND`. Passar de 10 fotos ou remover a última: `422` `INVALID_LISTING_PHOTO_COUNT`. Ordem que não contém cada foto exatamente uma vez: `422` `INVALID_LISTING_PHOTO_ORDER`. Edições simultâneas do mesmo anúncio são aplicadas uma de cada vez. `GET /properties/:listingId` também passa a devolver o `id` de cada mídia.
+
+Resposta `201 Created`:
+
+```json
+{
+  "propertyId": "<UUID>",
+  "listingId": "<UUID>"
+}
+```
+
+Os dados do imóvel, endereço, anúncio e referências das imagens são persistidos nas tabelas `properties`, `residences`, `listings` e `listing_media`, criadas pela migration `add_property_schema`.
+
+### Documentos de contratos
+
+- `GET /rental-contracts/:contractId/documents` lista os documentos do contrato.
+- `POST /rental-contracts/:contractId/documents` recebe `multipart/form-data` com `file` e `documentType` (`SIGNED_CONTRACT`, `IDENTITY_DOCUMENT`, `PROOF_OF_ADDRESS` ou `OTHER`).
+- `GET /rental-contracts/:contractId/documents/:documentId/download` baixa o arquivo.
+
+As três rotas exigem autenticação e só permitem acesso ao proprietário ou inquilino daquele contrato. São aceitos PDF, PNG e JPEG de até 10 MB. Os arquivos são validados pelo conteúdo, criptografados com AES-256-GCM e armazenados fora da pasta pública; configure `CONTRACT_DOCUMENTS_ENCRYPTION_KEY` e mantenha `CONTRACT_DOCUMENTS_DIR` em um volume privado persistente.
+
 ### `POST /auth/admin/login`
 
 Autentica um administrador pelas credenciais próprias cadastradas no registro `Administrator`.
@@ -276,13 +406,45 @@ Resposta `201 Created`:
 }
 ```
 
-As permissões do administrador são incluídas no token. A consulta administrativa de anúncios exige `MODERATE_LISTINGS`; sem essa permissão, a API responde `403`. Altere `Administrator.permissions` pelo Prisma Studio e autentique-se novamente para receber um token atualizado.
+As permissões do administrador são incluídas no token. A área de usuários exige `MANAGE_USERS` e a consulta de anúncios exige `MODERATE_LISTINGS`; sem a permissão correspondente, a API responde `403`. Conceda as permissões necessárias à conta administrativa pelo Prisma Studio (`npm run db:studio`, modelo `Administrator`, campo `permissions`) e entre novamente para emitir um token atualizado.
+
+### `GET /admin/users`
+
+Lista usuários reais em páginas de até 100 registros. Aceita `search` (nome ou e-mail), `status` (`ACTIVE`, `SUSPENDED` ou `DEACTIVATED`), `page` e `limit`. Requer `Authorization: Bearer <JWT de administrador>`.
+
+Resposta `200 OK`:
+
+```json
+{
+  "items": [
+    {
+      "id": "<UUID>",
+      "name": "Maria Silva",
+      "email": "maria@ufal.br",
+      "status": "ACTIVE",
+      "emailVerified": true,
+      "createdAt": "2026-11-20T12:00:00.000Z",
+      "student": {
+        "course": "Ciência da Computação",
+        "period": 3,
+        "verificationStatus": "PENDING"
+      },
+      "propertyOwner": null
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 25
+}
+```
+
+`GET /admin/users/:userId` consulta os mesmos dados de uma conta. `PATCH /admin/users/:userId/status` altera `status` para `SUSPENDED`, `ACTIVE` ou `DEACTIVATED` (esta última é permanente); ambas as rotas também exigem `MANAGE_USERS`. Suspender/desativar também bloqueia imediatamente o uso de tokens já emitidos em rotas protegidas.
 
 ### `GET /admin/listings`
 
-Consulta os anúncios persistidos, com paginação de até 100 registros. Aceita `search` (título, descrição, nome/e-mail do anunciante, cidade ou bairro), `status` (`PENDING`, `IN_REVIEW`, `APPROVED` ou `REJECTED`), `page` e `limit`. Requer `Authorization: Bearer <JWT de administrador>` com `MODERATE_LISTINGS`.
+Consulta os anúncios de imóveis e vagas persistidos no banco. Requer `Authorization: Bearer <JWT de administrador>` com a permissão `MODERATE_LISTINGS`. Aceita `search` (título, descrição, anunciante, cidade, bairro ou UUID), `status` (`PENDING`, `IN_REVIEW`, `APPROVED` ou `REJECTED`), `page` e `limit` (máximo 100).
 
-Cada resultado contém anúncio, imóvel, endereço, anunciante e mídias, sem expor CPF ou hash de senha. `GET /admin/listings/:listingId` consulta os detalhes do anúncio selecionado. Um ID inexistente responde `404` com `LISTING_NOT_FOUND`.
+Cada resultado inclui dados do anúncio, endereço, imóvel, anunciante e mídias, sem expor CPF ou credenciais. A interface administrativa usa `GET /admin/listings/:listingId` para carregar a consulta detalhada do anúncio selecionado. Anúncio inexistente responde `404` com `LISTING_NOT_FOUND`.
 
 ### `POST /auth/password-reset/request`
 
@@ -309,6 +471,18 @@ Altera a senha com o token recebido por e-mail. A senha e sua confirmação deve
 Responde `204 No Content` quando a senha é alterada. Token inexistente, expirado ou já usado e senhas diferentes respondem `422`. O token é consumido junto da alteração da senha em uma transação e não pode ser reutilizado.
 
 ### `POST /students`
+
+Antes de enviar o cadastro, o front pode consultar os dados em uma chamada pública, sem criar registros:
+
+```json
+{
+  "cpf": "529.982.247-25",
+  "email": "maria@ufal.br",
+  "enrollmentNumber": "20231234"
+}
+```
+
+`POST /registration/availability` recebe `cpf`, `email` e `enrollmentNumber`, todos opcionais; ao menos um deve ser enviado. Responde `200 OK` com `valid` e `unique` apenas para os campos consultados, por exemplo `{ "cpf": { "valid": true, "unique": false } }`. `valid` verifica o formato e, no CPF, os dígitos verificadores; `unique` indica disponibilidade. Quando o formato é inválido, `unique` será `null`. O limite é de 10 consultas por minuto por IP (`429`). A resposta é informativa: o cadastro continua validando unicidade para evitar duplicidades em requisições simultâneas.
 
 O cadastro também exige o objeto compatibilityAnswers, com respostas estruturadas do formulário de convivência. O front deve converter os rótulos exibidos em códigos:
 
@@ -413,7 +587,7 @@ Responde **sempre `202 Accepted`**, sem corpo, exista ou não uma conta com esse
 
 ## Chat
 
-Todas as rotas exigem o header `Authorization: Bearer <accessToken>` (obtido em `POST /auth/login`). Sem token ou com token inválido: `401`. Só usuários com **e-mail verificado** e conta ativa usam o chat.
+Todas as rotas exigem o header `Authorization: Bearer <accessToken>` (obtido em `POST /auth/login`). Sem token ou com token inválido: `401`. Apenas contas com perfil de estudante (`STUDENT_SEEKER` ou `STUDENT_OFFERER`), e-mail verificado e conta ativa usam o chat. Outros tipos recebem `403 ACCOUNT_TYPE_ACCESS_DENIED`.
 
 | Método | Rota                       | O que faz                                                                  | Sucesso         |
 | ------ | -------------------------- | -------------------------------------------------------------------------- | --------------- |
@@ -449,7 +623,7 @@ Erros:
 | Status | `code`                                   | Quando                                                                 |
 | ------ | ---------------------------------------- | ---------------------------------------------------------------------- |
 | `400`  | —                                        | Corpo inválido, `targetUserId` e `listingId` juntos ou nenhum, `cursor` inválido |
-| `403`  | `EMAIL_NOT_VERIFIED`, `CHAT_ACCESS_DENIED` | E-mail não verificado; conta inexistente ou inativa                  |
+| `403`  | `EMAIL_NOT_VERIFIED`, `CHAT_ACCESS_DENIED`, `ACCOUNT_TYPE_ACCESS_DENIED` | E-mail não verificado; conta inexistente/inativa ou tipo de conta sem acesso |
 | `404`  | `CHAT_NOT_FOUND`                         | A conversa não existe **ou** o usuário não participa dela              |
 | `404`  | `LISTING_NOT_FOUND`                      | Anúncio inexistente ou não aprovado                                    |
 | `422`  | `CANNOT_CHAT_WITH_YOURSELF`              | Conversa consigo mesmo, inclusive pelo próprio anúncio                 |
@@ -469,7 +643,7 @@ socket.on('message:new', (message) => { /* MessageResponse */ });
 socket.on('chat:read', ({ chatId, userId, readAt }) => { /* alguém leu */ });
 ```
 
-Token inválido: o servidor desconecta o socket. O envio de mensagens continua pelo `POST /chats/:chatId/messages`; o socket só entrega os eventos para os outros participantes (quem enviou já recebe a mensagem na resposta HTTP).
+Token inválido ou conta sem perfil de estudante: o servidor rejeita a conexão (`connect_error`, mensagem `UNAUTHORIZED` ou `ACCOUNT_TYPE_ACCESS_DENIED`). O envio de mensagens continua pelo `POST /chats/:chatId/messages`; o socket só entrega os eventos para os outros participantes (quem enviou já recebe a mensagem na resposta HTTP).
 
 ## Testes
 

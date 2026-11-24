@@ -1,3 +1,4 @@
+import type { UserProfileDetailsInput } from '../../../domain/entities/user-profile-details.entity.js';
 import type { StudentCompatibilityAnswersInput } from '../../../domain/entities/student-compatibility-answers.entity.js';
 
 // Dados crus, como chegam da camada de apresentação. A validação é feita
@@ -8,6 +9,8 @@ export interface RegisterStudentInput {
   cpf: string;
   password: string;
   phone?: string | null;
+  // Dados pessoais e preferências de moradia (todos opcionais).
+  profileDetails?: UserProfileDetailsInput;
   enrollmentNumber: string;
   course: string;
   period: number;

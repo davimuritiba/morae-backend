@@ -41,12 +41,13 @@ describe('Usuários e login (e2e)', () => {
     const id = randomUUID();
     const email = `${id}@ufal.br`;
     cpfCounter += 1;
+    const cpf = validCpf(cpfCounter);
     await prisma.user.create({
       data: {
         id,
         name,
         email,
-        cpf: validCpf(cpfCounter),
+        cpf,
         passwordHash,
         phone: '82999990000',
         emailVerified: true,
@@ -57,8 +58,78 @@ describe('Usuários e login (e2e)', () => {
       .post('/auth/login')
       .send({ email, password: PASSWORD })
       .expect(201);
-    return { id, email, token: body.accessToken as string };
+    return { id, email, cpf, token: body.accessToken as string };
   }
+
+  describe('POST /registration/availability', () => {
+    it('checks validity and uniqueness without creating records', async () => {
+      const existing = await createUser('Existente');
+      await prisma.student.create({
+        data: {
+          id: randomUUID(),
+          userId: existing.id,
+          enrollmentNumber: '20231234',
+          course: 'Ciência da Computação',
+          period: 1,
+          expectedGraduation: new Date('2027-12-31T00:00:00.000Z'),
+          updatedAt: new Date(),
+        },
+      });
+
+      const usersBefore = await prisma.user.count();
+      const studentsBefore = await prisma.student.count();
+
+      const duplicate = await http()
+        .post('/registration/availability')
+        .send({
+          cpf: existing.cpf,
+          email: existing.email.toUpperCase(),
+          enrollmentNumber: '20231234',
+        })
+        .expect(200);
+      expect(duplicate.body).toEqual({
+        cpf: { valid: true, unique: false },
+        email: { valid: true, unique: false },
+        enrollmentNumber: { valid: true, unique: false },
+      });
+
+      const invalid = await http()
+        .post('/registration/availability')
+        .send({
+          cpf: '111.111.111-11',
+          email: 'not-an-email',
+          enrollmentNumber: 'abc',
+        })
+        .expect(200);
+      expect(invalid.body).toEqual({
+        cpf: { valid: false, unique: null },
+        email: { valid: false, unique: null },
+        enrollmentNumber: { valid: false, unique: null },
+      });
+
+      const available = await http()
+        .post('/registration/availability')
+        .send({
+          cpf: '111.444.777-35',
+          email: 'disponivel@example.com',
+          enrollmentNumber: '20239999',
+        })
+        .expect(200);
+      expect(available.body).toEqual({
+        cpf: { valid: true, unique: true },
+        email: { valid: true, unique: true },
+        enrollmentNumber: { valid: true, unique: true },
+      });
+
+      await http()
+        .post('/registration/availability')
+        .send({})
+        .expect(400);
+
+      expect(await prisma.user.count()).toBe(usersBefore);
+      expect(await prisma.student.count()).toBe(studentsBefore);
+    });
+  });
 
   describe('GET /users', () => {
     it('exige token', async () => {
@@ -122,6 +193,36 @@ describe('Usuários e login (e2e)', () => {
         login: 'admin',
         permissions: ['MODERATE_LISTINGS'],
       });
+    });
+
+    it('autentica o administrador mesmo com CPF inválido no usuário associado', async () => {
+      const user = await createUser('Admin');
+      await prisma.administrator.create({
+        data: {
+          id: randomUUID(),
+          userId: user.id,
+          login: 'admin',
+          passwordHash,
+          permissions: ['MODERATE_LISTINGS'],
+          updatedAt: new Date(),
+        },
+      });
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { cpf: 'invalid-cpf' },
+      });
+
+      for (const login of ['admin', user.email]) {
+        const { body } = await http()
+          .post('/auth/admin/login')
+          .send({ login, password: PASSWORD })
+          .expect(201);
+        expect(body).toMatchObject({
+          userId: user.id,
+          login: 'admin',
+          permissions: ['MODERATE_LISTINGS'],
+        });
+      }
     });
   });
 

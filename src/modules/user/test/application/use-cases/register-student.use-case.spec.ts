@@ -1,3 +1,14 @@
+import {
+  CleaningFrequency,
+  EnvironmentPreference,
+  LifestyleTrait,
+  OrganizationLevel,
+  PetPreference,
+  SleepTime,
+  SmokingFrequency,
+  StudyAtHome,
+  VisitorFrequency,
+} from '../../../domain/enums/student-compatibility.enum.js';
 import { VerificationStatus } from '../../../../../shared/domain/enums/verification-status.enum.js';
 import { InMemoryUnitOfWork } from '../../../../../shared/infra/database/in-memory-unit-of-work.js';
 import { FakeLogger } from '../../../../../shared/test/fakes/fake-logger.js';
@@ -39,15 +50,15 @@ function makeInput(
     period: 3,
     expectedGraduation: new Date('2027-12-15'),
     compatibilityAnswers: {
-      sleepTime: 'FROM_23_TO_01',
-      studyAtHome: 'SOMETIMES',
-      organization: 'VERY_ORGANIZED',
-      visitors: 'SOMETIMES',
-      smoking: 'NO',
-      pets: 'NO',
-      cleaning: 'WEEKLY',
-      environment: 'QUIET',
-      lifestyle: ['CALM', 'STUDIOUS'],
+      sleepTime: SleepTime.FROM_23_TO_01,
+      studyAtHome: StudyAtHome.SOMETIMES,
+      organization: OrganizationLevel.VERY_ORGANIZED,
+      visitors: VisitorFrequency.SOMETIMES,
+      smoking: SmokingFrequency.NO,
+      pets: PetPreference.NO,
+      cleaning: CleaningFrequency.WEEKLY,
+      environment: EnvironmentPreference.QUIET,
+      lifestyle: [LifestyleTrait.CALM, LifestyleTrait.STUDIOUS],
     },
     ...overrides,
   };

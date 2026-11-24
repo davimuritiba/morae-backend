@@ -110,6 +110,7 @@ export class PrismaListingRepository extends ListingRepository {
         name: row.property.owner.user.name,
       },
       media: row.media.map((item) => ({
+        id: item.id,
         type: item.type as MediaType,
         url: item.url,
         position: item.position,

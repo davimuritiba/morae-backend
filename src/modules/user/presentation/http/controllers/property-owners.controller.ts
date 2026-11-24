@@ -1,3 +1,4 @@
+import { profileDetailsInput } from '../dtos/profile-details.dto.js';
 import {
   Body,
   Controller,
@@ -28,6 +29,7 @@ export class PropertyOwnersController {
       password: dto.password,
       phone: dto.phone ?? null,
       profileData: dto.profileData,
+      profileDetails: profileDetailsInput(dto.profileDetails),
     });
     return RegisterPropertyOwnerPresenter.toHttp(output);
   }

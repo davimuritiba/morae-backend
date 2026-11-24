@@ -139,6 +139,11 @@ export class User {
     this.touch();
   }
 
+  changePhoto(photoUrl: PhotoUrl | null): void {
+    this.#props.photoUrl = photoUrl;
+    this.touch();
+  }
+
   verifyEmail(): void {
     if (this.#props.emailVerified) return;
     this.#props.emailVerified = true;

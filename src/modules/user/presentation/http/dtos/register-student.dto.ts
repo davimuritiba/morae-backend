@@ -1,7 +1,9 @@
+import { ProfileDetailsDto } from './profile-details.dto.js';
 import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsDefined,
   IsEnum,
   IsInt,
   IsISO8601,
@@ -81,6 +83,9 @@ export class RegisterStudentDto {
   @IsISO8601({ strict: true })
   expectedGraduation: string;
 
+  // @ValidateNested ignora campo ausente: sem o @IsDefined, um cadastro sem as
+  // respostas passava pela validação e quebrava o caso de uso com 500.
+  @IsDefined()
   @ValidateNested()
   @Type(() => StudentCompatibilityAnswersDto)
   compatibilityAnswers: StudentCompatibilityAnswersDto;
@@ -93,4 +98,7 @@ export class RegisterStudentDto {
   @IsOptional()
   @IsObject()
   profileData?: Record<string, unknown>;
+  @ValidateNested()
+  @Type(() => ProfileDetailsDto)
+  profileDetails?: ProfileDetailsDto;
 }

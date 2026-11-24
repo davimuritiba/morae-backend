@@ -64,10 +64,13 @@ export class PropertyMapper {
     });
   }
 
-  static toPersistence(property: Property): Prisma.PropertyCreateInput {
+  static toPersistence(
+    property: Property,
+    propertyOwnerId = property.ownerId,
+  ): Prisma.PropertyCreateInput {
     return {
       id: property.id,
-      owner: { connect: { id: property.ownerId } },
+      owner: { connect: { id: propertyOwnerId } },
       housingType: property.housingType,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,

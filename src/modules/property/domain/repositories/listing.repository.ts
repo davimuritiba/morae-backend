@@ -15,7 +15,7 @@ export interface ListingSearchResult {
   amenities: string[];
   location: { city: string; neighborhood: string; state: string };
   advertiser: { userId: string; name: string };
-  media: { type: MediaType; url: string; position: number }[];
+  media: { id: string; type: MediaType; url: string; position: number }[];
   createdAt: Date;
 }
 
