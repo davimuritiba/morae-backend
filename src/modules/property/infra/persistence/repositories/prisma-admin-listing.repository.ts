@@ -183,4 +183,16 @@ export class PrismaAdminListingRepository extends AdminListingRepository {
     });
     return row ? toAdminRecord(row) : null;
   }
+
+  async transitionStatus(
+    listingId: string,
+    from: readonly ListingStatus[],
+    to: ListingStatus,
+  ): Promise<boolean> {
+    const { count } = await this.prisma.listing.updateMany({
+      where: { id: listingId, status: { in: from.map(toPrismaStatus) } },
+      data: { status: toPrismaStatus(to), updatedAt: new Date() },
+    });
+    return count > 0;
+  }
 }
