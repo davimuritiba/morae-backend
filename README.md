@@ -301,7 +301,7 @@ Cada conta aceita até 10 tentativas a cada 15 minutos por IP; depois disso, a A
 
 ### `POST /properties`
 
-Publica um imóvel/vaga para revisão. Envie `multipart/form-data` com o token de login no cabeçalho `Authorization: Bearer <JWT>`. O proprietário é associado à conta autenticada; não envie `ownerId`.
+Publica um imóvel/vaga para revisão. Apenas contas com perfil de proprietário (`PROPERTY_OWNER` ou `STUDENT_OFFERER`) podem publicar. Envie `multipart/form-data` com o token de login no cabeçalho `Authorization: Bearer <JWT>`. O proprietário é associado à conta autenticada; não envie `ownerId`. Contas sem perfil de proprietário recebem `403 ACCOUNT_TYPE_ACCESS_DENIED`.
 
 Campos: `postalCode` (8 dígitos), `state`, `street`, `number`, `complement` (opcional), `city`, `neighborhood`, `housingType` (`APARTMENT`, `HOUSE`, `ROOM` ou `REPUBLIC`), `bedrooms`, `bathrooms`, `parkingSpaces`, `amenities` (JSON array), `title`, `description`, `rules` (opcional), `rent`, `condominium` (opcional), `contractType`, `minimumStay`, e de 1 a 10 arquivos `photos`.
 
@@ -575,7 +575,7 @@ Responde **sempre `202 Accepted`**, sem corpo, exista ou não uma conta com esse
 
 ## Chat
 
-Todas as rotas exigem o header `Authorization: Bearer <accessToken>` (obtido em `POST /auth/login`). Sem token ou com token inválido: `401`. Só usuários com **e-mail verificado** e conta ativa usam o chat.
+Todas as rotas exigem o header `Authorization: Bearer <accessToken>` (obtido em `POST /auth/login`). Sem token ou com token inválido: `401`. Apenas contas com perfil de estudante (`STUDENT_SEEKER` ou `STUDENT_OFFERER`), e-mail verificado e conta ativa usam o chat. Outros tipos recebem `403 ACCOUNT_TYPE_ACCESS_DENIED`.
 
 | Método | Rota                       | O que faz                                                                  | Sucesso         |
 | ------ | -------------------------- | -------------------------------------------------------------------------- | --------------- |
@@ -611,7 +611,7 @@ Erros:
 | Status | `code`                                   | Quando                                                                 |
 | ------ | ---------------------------------------- | ---------------------------------------------------------------------- |
 | `400`  | —                                        | Corpo inválido, `targetUserId` e `listingId` juntos ou nenhum, `cursor` inválido |
-| `403`  | `EMAIL_NOT_VERIFIED`, `CHAT_ACCESS_DENIED` | E-mail não verificado; conta inexistente ou inativa                  |
+| `403`  | `EMAIL_NOT_VERIFIED`, `CHAT_ACCESS_DENIED`, `ACCOUNT_TYPE_ACCESS_DENIED` | E-mail não verificado; conta inexistente/inativa ou tipo de conta sem acesso |
 | `404`  | `CHAT_NOT_FOUND`                         | A conversa não existe **ou** o usuário não participa dela              |
 | `404`  | `LISTING_NOT_FOUND`                      | Anúncio inexistente ou não aprovado                                    |
 | `422`  | `CANNOT_CHAT_WITH_YOURSELF`              | Conversa consigo mesmo, inclusive pelo próprio anúncio                 |
@@ -631,7 +631,7 @@ socket.on('message:new', (message) => { /* MessageResponse */ });
 socket.on('chat:read', ({ chatId, userId, readAt }) => { /* alguém leu */ });
 ```
 
-Token inválido: o servidor desconecta o socket. O envio de mensagens continua pelo `POST /chats/:chatId/messages`; o socket só entrega os eventos para os outros participantes (quem enviou já recebe a mensagem na resposta HTTP).
+Token inválido ou conta sem perfil de estudante: o servidor rejeita a conexão (`connect_error`, mensagem `UNAUTHORIZED` ou `ACCOUNT_TYPE_ACCESS_DENIED`). O envio de mensagens continua pelo `POST /chats/:chatId/messages`; o socket só entrega os eventos para os outros participantes (quem enviou já recebe a mensagem na resposta HTTP).
 
 ## Testes
 

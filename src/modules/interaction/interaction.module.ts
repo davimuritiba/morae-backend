@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { UserModule } from '../user/user.module.js';
 import { Clock } from '../../shared/application/clock.js';
 import { Logger } from '../../shared/application/logger.js';
 import { UnitOfWork } from '../../shared/application/unit-of-work.js';
@@ -48,6 +49,7 @@ import { ChatGateway } from './presentation/ws/chat.gateway.js';
 import { SocketChatNotifier } from './presentation/ws/socket-chat-notifier.js';
 
 @Module({
+  imports: [UserModule],
   controllers: [ChatsController, FavoritesController, InterestsController, ReviewsController],
   providers: [
     { provide: ChatRepository, useClass: PrismaChatRepository },

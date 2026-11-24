@@ -36,6 +36,7 @@ import { PasswordResetTokenRepository } from './domain/repositories/password-res
 import { StudentRepository } from './domain/repositories/student.repository.js';
 import { PropertyOwnerRepository } from './domain/repositories/property-owner.repository.js';
 import { UserRepository } from './domain/repositories/user.repository.js';
+import { AccountTypeGuard } from '../../shared/presentation/guards/account-type.guard.js';
 import { PrismaEmailVerificationTokenRepository } from './infra/persistence/repositories/prisma-email-verification-token.repository.js';
 import { PrismaPasswordResetTokenRepository } from './infra/persistence/repositories/prisma-password-reset-token.repository.js';
 import { AdministratorRepository } from './domain/repositories/administrator.repository.js';
@@ -72,8 +73,9 @@ const HOUR_MS = 60 * 60 * 1000;
     EmailVerificationController,
     PasswordResetController,
   ],
-  exports: [UserRepository, StudentRepository],
+  exports: [UserRepository, StudentRepository, AccountTypeGuard],
   providers: [
+    AccountTypeGuard,
     GoogleOAuthService,
     // Contratos → implementações. As classes abstratas servem de token.
     { provide: UserRepository, useClass: PrismaUserRepository },

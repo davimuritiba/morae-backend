@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { UserModule } from '../user/user.module.js';
 import { GetAdminListingUseCase } from './application/use-cases/get-admin-listing/get-admin-listing.use-case.js';
 import { GetListingUseCase } from './application/use-cases/get-listing/get-listing.use-case.js';
 import { ListAdminListingsUseCase } from './application/use-cases/list-admin-listings/list-admin-listings.use-case.js';
@@ -26,6 +27,7 @@ import { AdminListingsController } from './presentation/http/controllers/admin-l
 import { PropertyController } from './presentation/http/controllers/property.controller.js';
 
 @Module({
+  imports: [UserModule],
   providers: [
     PrismaPropertyRepository,
     { provide: PropertyRepository, useExisting: PrismaPropertyRepository },

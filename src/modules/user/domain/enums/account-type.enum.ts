@@ -6,6 +6,16 @@ export enum AccountType {
   OTHER = 'OTHER',
 }
 
+export const STUDENT_ACCOUNT_TYPES: readonly AccountType[] = [
+  AccountType.STUDENT_SEEKER,
+  AccountType.STUDENT_OFFERER,
+];
+
+export const PROPERTY_OWNER_ACCOUNT_TYPES: readonly AccountType[] = [
+  AccountType.PROPERTY_OWNER,
+  AccountType.STUDENT_OFFERER,
+];
+
 export interface AccountProfilePresence {
   student: boolean;
   propertyOwner: boolean;

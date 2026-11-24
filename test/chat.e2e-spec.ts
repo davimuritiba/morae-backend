@@ -53,6 +53,7 @@ describe('Chat (e2e)', () => {
   async function createUser(
     name: string,
     emailVerified = true,
+    profile: 'student' | 'propertyOwner' = 'student',
   ): Promise<TestUser> {
     const id = randomUUID();
     const email = `${id}@ufal.br`;
@@ -70,6 +71,23 @@ describe('Chat (e2e)', () => {
         updatedAt: new Date(),
       },
     });
+    if (profile === 'student') {
+      await prisma.student.create({
+        data: {
+          id: randomUUID(),
+          userId: id,
+          enrollmentNumber: `TST${String(cpfCounter).padStart(10, '0')}`,
+          course: 'Ciência da Computação',
+          period: 1,
+          expectedGraduation: new Date('2027-12-31T00:00:00.000Z'),
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      await prisma.propertyOwner.create({
+        data: { id: randomUUID(), userId: id, updatedAt: new Date() },
+      });
+    }
 
     const response = await http()
       .post('/auth/login')
@@ -126,6 +144,22 @@ describe('Chat (e2e)', () => {
       .get('/chats')
       .set('Authorization', 'Bearer token-invalido')
       .expect(401);
+  });
+
+  it('restringe o chat a estudantes também no HTTP e no WebSocket', async () => {
+    const owner = await createUser('Proprietário', true, 'propertyOwner');
+
+    await as(owner)
+      .get('/chats')
+      .expect(403)
+      .expect((r) => expect(r.body.code).toBe('ACCOUNT_TYPE_ACCESS_DENIED'));
+
+    const socket = connect(owner.token);
+    const rejected = nextEvent<Error>(socket, 'connect_error');
+    await expect(rejected).resolves.toMatchObject({
+      message: 'ACCOUNT_TYPE_ACCESS_DENIED',
+    });
+    expect(socket.connected).toBe(false);
   });
 
   it('fluxo completo de conversa direta', async () => {
@@ -314,10 +348,12 @@ describe('Chat (e2e)', () => {
       expect(await read).toMatchObject({ chatId: chat.id, userId: bruno.id });
     });
 
-    it('desconecta quem não tem token válido', async () => {
+    it('rejeita conexão sem token válido', async () => {
       const socket = connect('token-invalido');
 
-      await nextEvent(socket, 'disconnect');
+      await expect(
+        nextEvent<Error>(socket, 'connect_error'),
+      ).resolves.toMatchObject({ message: 'UNAUTHORIZED' });
       expect(socket.connected).toBe(false);
     });
   });

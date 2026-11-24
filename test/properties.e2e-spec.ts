@@ -30,7 +30,7 @@ describe('Properties endpoints (e2e)', () => {
     await resetDatabase(prisma);
   });
 
-  async function createUser(seed: number): Promise<string> {
+  async function createUser(seed: number, asPropertyOwner = true): Promise<string> {
     const id = randomUUID();
     await prisma.user.create({
       data: {
@@ -42,6 +42,11 @@ describe('Properties endpoints (e2e)', () => {
         updatedAt: new Date(),
       },
     });
+    if (asPropertyOwner) {
+      await prisma.propertyOwner.create({
+        data: { id: randomUUID(), userId: id, updatedAt: new Date() },
+      });
+    }
     return id;
   }
 
@@ -142,6 +147,19 @@ describe('Properties endpoints (e2e)', () => {
       propertyId: body.propertyId,
       status: 'PENDING',
     });
+  });
+
+  it('403: impede estudante sem perfil de proprietário de publicar anúncio', async () => {
+    const studentId = await createUser(2, false);
+    const token = await app.get(AuthTokenService).sign(studentId);
+
+    await request(app.getHttpServer())
+      .post('/properties')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403)
+      .expect(({ body }) =>
+        expect(body.code).toBe('ACCOUNT_TYPE_ACCESS_DENIED'),
+      );
   });
 
   it('GET /properties filtra por cidade, bairro e estado, sem diferenciar caixa', async () => {

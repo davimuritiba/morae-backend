@@ -24,6 +24,7 @@ import { ManageListingPhotosUseCase } from '../../../application/use-cases/manag
 import type { ListingPhotos } from '../../../domain/repositories/owner-listing-media.repository.js';
 import { MAX_IMAGE_BYTES } from '../../../../../shared/infra/media/public-image-directory.js';
 import { ReorderListingPhotosDto } from '../dtos/reorder-listing-photos.dto.js';
+import { PROPERTY_OWNER_ACCOUNT_TYPES } from '../../../../user/domain/enums/account-type.enum.js';
 import { GetListingUseCase } from '../../../application/use-cases/get-listing/get-listing.use-case.js';
 import { ManageOwnerListingUseCase } from '../../../application/use-cases/manage-owner-listing/manage-owner-listing.use-case.js';
 import { RemoveOwnerListingUseCase } from '../../../application/use-cases/manage-owner-listing/remove-owner-listing.use-case.js';
@@ -32,6 +33,10 @@ import { PublishPropertyUseCase } from '../../../application/use-cases/publish-p
 import { SearchListingsUseCase } from '../../../application/use-cases/search-listings/search-listings.use-case.js';
 import { PropertyMediaStorage } from '../../../infra/media/property-media-storage.js';
 import { CurrentUserId } from '../../../../../shared/presentation/decorators/current-user-id.decorator.js';
+import {
+  AccountTypeGuard,
+  RequireAccountTypes,
+} from '../../../../../shared/presentation/guards/account-type.guard.js';
 import type { AuthenticatedRequest } from '../../../../../shared/presentation/guards/jwt-auth.guard.js';
 import { JwtAuthGuard } from '../../../../../shared/presentation/guards/jwt-auth.guard.js';
 import { ManageOwnerListingDto } from '../dtos/manage-owner-listing.dto.js';
@@ -143,7 +148,8 @@ export class PropertyController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AccountTypeGuard)
+  @RequireAccountTypes(...PROPERTY_OWNER_ACCOUNT_TYPES)
   @UseInterceptors(
     FilesInterceptor('photos', 10, {
       limits: { fileSize: 5 * 1024 * 1024, files: 10 },
