@@ -146,6 +146,7 @@ describe('Usuários e login (e2e)', () => {
       expect(me.body).toMatchObject({
         userId: ana.id,
         email: ana.email,
+        cpf: ana.cpf,
         phone: '82999990000',
       });
 

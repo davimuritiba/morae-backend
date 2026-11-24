@@ -171,7 +171,12 @@ describe('Perfil do usuário', () => {
         compatibilityAnswers: answers,
       },
       housingPreferences: { maxBudget: 800, roommateGender: RoommateGender.FEMALE },
-      private: { email: 'maria@ufal.br', birthDate: '2004-05-18', gender: Gender.FEMALE },
+      private: {
+        email: 'maria@ufal.br',
+        cpf: '52998224725',
+        birthDate: '2004-05-18',
+        gender: Gender.FEMALE,
+      },
     });
   });
 
@@ -184,6 +189,7 @@ describe('Perfil do usuário', () => {
     expect(profile.age).toBe(22);
     expect(profile.student?.course).toBe('Ciência da Computação');
     expect(JSON.stringify(profile)).not.toContain('maria@ufal.br');
+    expect(JSON.stringify(profile)).not.toContain('52998224725');
     expect(JSON.stringify(profile)).not.toContain('2004-05-18');
   });
 

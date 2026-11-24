@@ -238,6 +238,7 @@ Exigem `Authorization: Bearer <accessToken>`; sem token, `401`.
   "userId": "0b6f3c1e-8f2a-4c1d-9a51-3f1f2c7d9e10",
   "name": "Maria Silva",
   "email": "maria@ufal.br",
+  "cpf": "52998224725",
   "phone": "82999991234",
   "photoUrl": null,
   "emailVerified": false,
@@ -267,7 +268,7 @@ Duplicidades de e-mail/CPF respondem `409`; formatos inválidos respondem `422`;
 
 ### `PUT /users/me/photo` e `DELETE /users/me/photo`
 
-Envia ou remove a foto de perfil da conta autenticada. O `PUT` recebe `multipart/form-data` com o arquivo no campo `photo`: JPEG, PNG ou WEBP de até 5 MB, validado pelo conteúdo. A foto fica em `UPLOADS_DIR/users`, é servida em `/uploads/users/<nome>` e substitui a anterior, cujo arquivo é apagado. As duas rotas respondem `200` com os dados da conta (o mesmo formato de `GET /users/me`), com `photoUrl` relativo à API, como `/uploads/users/<uuid>.png`, ou `null`. Sem arquivo ou com imagem inválida: `400`; arquivo acima de 5 MB: `413`.
+Envia ou remove a foto de perfil da conta autenticada. O `PUT` recebe `multipart/form-data` com o arquivo no campo `photo`: JPEG, PNG ou WEBP de até 5 MB, validado pelo conteúdo. A foto fica em `UPLOADS_DIR/users`, é servida em `/uploads/users/<nome>` e substitui a anterior, cujo arquivo é apagado. As duas rotas respondem `200` com os dados atualizados da conta, com `photoUrl` relativo à API, como `/uploads/users/<uuid>.png`, ou `null`; não incluem o CPF. Sem arquivo ou com imagem inválida: `400`; arquivo acima de 5 MB: `413`.
 
 ### `POST /auth/login`
 
