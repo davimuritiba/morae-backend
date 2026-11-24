@@ -155,6 +155,7 @@ model User {
   updatedAt     DateTime      @map("updated_at") @db.Timestamptz(3)
 
   student                   Student?
+  profileDetails            UserProfileDetails?
   propertyOwner             PropertyOwner?
   administrator             Administrator?
   propertyCohabitancies     PropertyCohabitant[]
@@ -173,11 +174,11 @@ model User {
   paymentProviderConnection PaymentProviderConnection?
   paymentOAuthStates        PaymentOAuthState[]
   googleIdentity            GoogleIdentity?
-  reviewsGiven              Review[]                    @relation("ReviewReviewer")
-  reviewsReceived            Review[]                    @relation("ReviewReviewed")
-  reportsSubmitted          Report[]                    @relation("ReportReporter")
-  reportsReceived            Report[]                    @relation("ReportTarget")
-  contractDocumentsUploaded ContractDocument[]          @relation("ContractDocumentUploader")
+  reviewsGiven              Review[]                   @relation("ReviewReviewer")
+  reviewsReceived           Review[]                   @relation("ReviewReviewed")
+  reportsSubmitted          Report[]                   @relation("ReportReporter")
+  reportsReceived           Report[]                   @relation("ReportTarget")
+  contractDocumentsUploaded ContractDocument[]         @relation("ContractDocumentUploader")
 
   @@map("users")
 }
@@ -501,11 +502,11 @@ model Favorite {
 }
 
 model Interest {
-  userId    String   @map("user_id") @db.Uuid
-  listingId String   @map("listing_id") @db.Uuid
+  userId    String         @map("user_id") @db.Uuid
+  listingId String         @map("listing_id") @db.Uuid
   status    InterestStatus @default(PENDING)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
@@ -626,7 +627,7 @@ model RentalContract {
   tenant              User                 @relation("RentalContractTenant", fields: [tenantId], references: [id], onDelete: Restrict)
   paymentTransactions PaymentTransaction[]
   review              Review?
-  documents            ContractDocument[]
+  documents           ContractDocument[]
 
   @@index([ownerId, status])
   @@index([tenantId, status])
@@ -634,18 +635,18 @@ model RentalContract {
 }
 
 model Review {
-  id            String   @id @db.Uuid
-  contractId    String   @unique @map("contract_id") @db.Uuid
-  reviewerId    String   @map("reviewer_id") @db.Uuid
-  reviewedUserId String  @map("reviewed_user_id") @db.Uuid
-  cleanliness   Int      @db.SmallInt
-  condition     Int      @db.SmallInt
-  location      Int      @db.SmallInt
-  communication Int      @db.SmallInt
-  value         Int      @db.SmallInt
-  overall       Int      @db.SmallInt
-  comment       String   @db.VarChar(1000)
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id             String   @id @db.Uuid
+  contractId     String   @unique @map("contract_id") @db.Uuid
+  reviewerId     String   @map("reviewer_id") @db.Uuid
+  reviewedUserId String   @map("reviewed_user_id") @db.Uuid
+  cleanliness    Int      @db.SmallInt
+  condition      Int      @db.SmallInt
+  location       Int      @db.SmallInt
+  communication  Int      @db.SmallInt
+  value          Int      @db.SmallInt
+  overall        Int      @db.SmallInt
+  comment        String   @db.VarChar(1000)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   contract     RentalContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
   reviewer     User           @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
@@ -725,4 +726,33 @@ model PaymentOAuthState {
 
   @@index([userId, expiresAt])
   @@map("payment_oauth_states")
+}
+
+// Dados pessoais e preferências de moradia informados no cadastro e editáveis
+// no perfil. Tudo opcional: contas antigas não têm esses dados. Os códigos
+// (gender, housingType...) são validados no domínio (UserProfileDetails).
+model UserProfileDetails {
+  userId                 String    @id @map("user_id") @db.Uuid
+  bio                    String?   @db.VarChar(1000)
+  birthDate              DateTime? @map("birth_date") @db.Date
+  gender                 String?   @db.VarChar(20)
+  country                String?   @db.VarChar(60)
+  state                  String?   @db.VarChar(60)
+  city                   String?   @db.VarChar(100)
+  neighborhood           String?   @db.VarChar(100)
+  postalCode             String?   @map("postal_code") @db.Char(8)
+  address                String?   @db.VarChar(200)
+  university             String?   @db.VarChar(150)
+  campus                 String?   @db.VarChar(100)
+  housingType            String?   @map("housing_type") @db.VarChar(20)
+  maxBudget              Decimal?  @map("max_budget") @db.Decimal(10, 2)
+  campusDistance         String?   @map("campus_distance") @db.VarChar(20)
+  preferredNeighborhoods String?   @map("preferred_neighborhoods") @db.VarChar(300)
+  desiredRoommates       String?   @map("desired_roommates") @db.VarChar(20)
+  roommateGender         String?   @map("roommate_gender") @db.VarChar(20)
+  updatedAt              DateTime  @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profile_details")
 }

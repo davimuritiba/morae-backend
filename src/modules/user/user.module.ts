@@ -12,6 +12,10 @@ import { PasswordResetNotifier } from './application/ports/password-reset-notifi
 import { VerificationTokenGenerator } from './application/ports/verification-token-generator.port.js';
 import { ConfirmEmailVerificationUseCase } from './application/use-cases/confirm-email-verification/confirm-email-verification.use-case.js';
 import { GetUserByIdUseCase } from './application/use-cases/get-user-by-id/get-user-by-id.use-case.js';
+import { GetUserProfileUseCase } from './application/use-cases/get-user-profile/get-user-profile.use-case.js';
+import { UpdateMyProfileUseCase } from './application/use-cases/update-my-profile/update-my-profile.use-case.js';
+import { UserProfileDetailsRepository } from './domain/repositories/user-profile-details.repository.js';
+import { PrismaUserProfileDetailsRepository } from './infra/persistence/repositories/prisma-user-profile-details.repository.js';
 import { UpdateUserProfileUseCase } from './application/use-cases/update-user-profile/update-user-profile.use-case.js';
 import { LoginUseCase } from './application/use-cases/login/login.use-case.js';
 import { LoginAdministratorUseCase } from './application/use-cases/login-administrator/login-administrator.use-case.js';
@@ -71,6 +75,36 @@ const HOUR_MS = 60 * 60 * 1000;
     // Contratos → implementações. As classes abstratas servem de token.
     { provide: UserRepository, useClass: PrismaUserRepository },
     { provide: StudentRepository, useClass: PrismaStudentRepository },
+    {
+      provide: UserProfileDetailsRepository,
+      useClass: PrismaUserProfileDetailsRepository,
+    },
+    {
+      provide: GetUserProfileUseCase,
+      useFactory: (
+        users: UserRepository,
+        students: StudentRepository,
+        details: UserProfileDetailsRepository,
+      ) => new GetUserProfileUseCase(users, students, details),
+      inject: [UserRepository, StudentRepository, UserProfileDetailsRepository],
+    },
+    {
+      provide: UpdateMyProfileUseCase,
+      useFactory: (
+        users: UserRepository,
+        students: StudentRepository,
+        details: UserProfileDetailsRepository,
+        unitOfWork: UnitOfWork,
+        getUserProfile: GetUserProfileUseCase,
+      ) => new UpdateMyProfileUseCase(users, students, details, unitOfWork, getUserProfile),
+      inject: [
+        UserRepository,
+        StudentRepository,
+        UserProfileDetailsRepository,
+        UnitOfWork,
+        GetUserProfileUseCase,
+      ],
+    },
     {
       provide: PropertyOwnerRepository,
       useClass: PrismaPropertyOwnerRepository,
@@ -244,6 +278,7 @@ const HOUR_MS = 60 * 60 * 1000;
         unitOfWork: UnitOfWork,
         sendEmailVerification: SendEmailVerificationUseCase,
         logger: Logger,
+        profileDetails: UserProfileDetailsRepository,
       ) =>
         new RegisterStudentUseCase(
           users,
@@ -253,6 +288,7 @@ const HOUR_MS = 60 * 60 * 1000;
           unitOfWork,
           sendEmailVerification,
           logger,
+          profileDetails,
         ),
       inject: [
         UserRepository,
@@ -262,6 +298,7 @@ const HOUR_MS = 60 * 60 * 1000;
         UnitOfWork,
         SendEmailVerificationUseCase,
         Logger,
+        UserProfileDetailsRepository,
       ],
     },
     {
@@ -273,6 +310,7 @@ const HOUR_MS = 60 * 60 * 1000;
         unitOfWork: UnitOfWork,
         sendEmailVerification: SendEmailVerificationUseCase,
         logger: Logger,
+        profileDetails: UserProfileDetailsRepository,
       ) =>
         new RegisterPropertyOwnerUseCase(
           users,
@@ -281,6 +319,7 @@ const HOUR_MS = 60 * 60 * 1000;
           unitOfWork,
           sendEmailVerification,
           logger,
+          profileDetails,
         ),
       inject: [
         UserRepository,
@@ -289,6 +328,7 @@ const HOUR_MS = 60 * 60 * 1000;
         UnitOfWork,
         SendEmailVerificationUseCase,
         Logger,
+        UserProfileDetailsRepository,
       ],
     },
     {

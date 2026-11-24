@@ -1,3 +1,4 @@
+import { ProfileDetailsDto } from './profile-details.dto.js';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -92,4 +93,9 @@ export class RegisterStudentDto {
   @IsOptional()
   @IsBoolean()
   advertisesProperty?: boolean;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProfileDetailsDto)
+  profileDetails?: ProfileDetailsDto;
 }
