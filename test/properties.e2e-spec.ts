@@ -313,4 +313,130 @@ describe('Properties endpoints (e2e)', () => {
         expect(body.code).toBe('INVALID_LISTING_TRANSITION'),
       );
   });
+
+  async function adminAuth(
+    seed: number,
+    permissions: string[] = ['MODERATE_LISTINGS'],
+  ): Promise<{ Authorization: string }> {
+    const userId = await createUser(seed);
+    const token = await app
+      .get(AuthTokenService)
+      .signAdministrator(userId, randomUUID(), permissions);
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  it('admin aprova anúncio pendente e ele passa a aparecer na busca', async () => {
+    const listingId = await createListing({
+      seed: 90,
+      city: 'Maceió',
+      neighborhood: 'Jatiúca',
+      status: 'PENDING',
+    });
+    await request(app.getHttpServer())
+      .get('/properties?location=Jatiúca')
+      .expect(200)
+      .expect([]);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(await adminAuth(91))
+      .send({ status: 'APPROVED' })
+      .expect(200)
+      .expect(({ body }) =>
+        expect(body).toMatchObject({ listingId, status: 'APPROVED' }),
+      );
+
+    await request(app.getHttpServer())
+      .get('/properties?location=Jatiúca')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toHaveLength(1);
+        expect(body[0].listingId).toBe(listingId);
+      });
+  });
+
+  it('admin rejeita anúncio pendente, que fica fora da busca e pode ser aprovado depois', async () => {
+    const listingId = await createListing({
+      seed: 92,
+      city: 'Maceió',
+      neighborhood: 'Pajuçara',
+      status: 'PENDING',
+    });
+    const auth = await adminAuth(93);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'REJECTED' })
+      .expect(200)
+      .expect(({ body }) => expect(body.status).toBe('REJECTED'));
+    await request(app.getHttpServer())
+      .get(`/properties/${listingId}`)
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'APPROVED' })
+      .expect(200)
+      .expect(({ body }) => expect(body.status).toBe('APPROVED'));
+  });
+
+  it('moderação recusa transição inválida, status desconhecido e anúncio inexistente', async () => {
+    const listingId = await createListing({
+      seed: 94,
+      city: 'Maceió',
+      neighborhood: 'Gruta',
+      status: 'APPROVED',
+    });
+    const auth = await adminAuth(95);
+
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'REJECTED' })
+      .expect(409)
+      .expect(({ body }) =>
+        expect(body.code).toBe('INVALID_LISTING_TRANSITION'),
+      );
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${listingId}/status`)
+      .set(auth)
+      .send({ status: 'REMOVED' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch(`/admin/listings/${randomUUID()}/status`)
+      .set(auth)
+      .send({ status: 'APPROVED' })
+      .expect(404);
+  });
+
+  it('moderação exige token de administrador com MODERATE_LISTINGS', async () => {
+    const listingId = await createListing({
+      seed: 96,
+      city: 'Maceió',
+      neighborhood: 'Farol',
+      status: 'PENDING',
+    });
+    const route = `/admin/listings/${listingId}/status`;
+
+    await request(app.getHttpServer())
+      .patch(route)
+      .send({ status: 'APPROVED' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .patch(route)
+      .set('Authorization', `Bearer ${await tokenForListingOwner(listingId)}`)
+      .send({ status: 'APPROVED' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .patch(route)
+      .set(await adminAuth(97, ['MANAGE_USERS']))
+      .send({ status: 'APPROVED' })
+      .expect(403);
+
+    expect(
+      (await prisma.listing.findUnique({ where: { id: listingId } }))?.status,
+    ).toBe('PENDING');
+  });
 });

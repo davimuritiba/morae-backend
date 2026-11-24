@@ -60,4 +60,10 @@ export interface AdminListingPage {
 export abstract class AdminListingRepository {
   abstract findPage(query: AdminListingQuery): Promise<AdminListingPage>;
   abstract findById(listingId: string): Promise<AdminListingRecord | null>;
+  // Troca o status só se o atual estiver em `from`; devolve se trocou.
+  abstract transitionStatus(
+    listingId: string,
+    from: readonly ListingStatus[],
+    to: ListingStatus,
+  ): Promise<boolean>;
 }

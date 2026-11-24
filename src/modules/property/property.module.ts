@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { GetAdminListingUseCase } from './application/use-cases/get-admin-listing/get-admin-listing.use-case.js';
 import { GetListingUseCase } from './application/use-cases/get-listing/get-listing.use-case.js';
 import { ListAdminListingsUseCase } from './application/use-cases/list-admin-listings/list-admin-listings.use-case.js';
+import { ModerateAdminListingUseCase } from './application/use-cases/moderate-admin-listing/moderate-admin-listing.use-case.js';
 import { ManageOwnerListingUseCase } from './application/use-cases/manage-owner-listing/manage-owner-listing.use-case.js';
 import { RemoveOwnerListingUseCase } from './application/use-cases/manage-owner-listing/remove-owner-listing.use-case.js';
 import { PublishPropertyUseCase } from './application/use-cases/publish-property/publish-property.use-case.js';
@@ -57,6 +58,12 @@ import { PropertyController } from './presentation/http/controllers/property.con
       provide: GetAdminListingUseCase,
       useFactory: (listings: AdminListingRepository) =>
         new GetAdminListingUseCase(listings),
+      inject: [AdminListingRepository],
+    },
+    {
+      provide: ModerateAdminListingUseCase,
+      useFactory: (listings: AdminListingRepository) =>
+        new ModerateAdminListingUseCase(listings),
       inject: [AdminListingRepository],
     },
     PrismaOwnerListingRepository,
