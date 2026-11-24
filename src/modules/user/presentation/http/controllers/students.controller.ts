@@ -10,7 +10,6 @@ import { CurrentUserId } from '../../../../../shared/presentation/decorators/cur
 import { JwtAuthGuard } from '../../../../../shared/presentation/guards/jwt-auth.guard.js';
 import { StudentRepository } from '../../../domain/repositories/student.repository.js';
 import { profileDetailsInput } from '../dtos/profile-details.dto.js';
-import { Body, Controller, Post } from '@nestjs/common';
 import { RegisterStudentUseCase } from '../../../application/use-cases/register-student/register-student.use-case.js';
 import { RegisterStudentDto } from '../dtos/register-student.dto.js';
 import {
