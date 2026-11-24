@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { STUDENT_ACCOUNT_TYPES } from '../../../../user/domain/enums/account-type.enum.js';
+import { CHAT_ACCOUNT_TYPES } from '../../../../user/domain/enums/account-type.enum.js';
 import { CurrentUserId } from '../../../../../shared/presentation/decorators/current-user-id.decorator.js';
 import {
   AccountTypeGuard,
@@ -45,7 +45,7 @@ const DEFAULT_PAGE_SIZE = 30;
 
 @Controller('chats')
 @UseGuards(JwtAuthGuard, AccountTypeGuard)
-@RequireAccountTypes(...STUDENT_ACCOUNT_TYPES)
+@RequireAccountTypes(...CHAT_ACCOUNT_TYPES)
 export class ChatsController {
   constructor(
     private readonly startDirectChat: StartDirectChatUseCase,

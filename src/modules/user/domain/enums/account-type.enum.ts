@@ -16,6 +16,15 @@ export const PROPERTY_OWNER_ACCOUNT_TYPES: readonly AccountType[] = [
   AccountType.STUDENT_OFFERER,
 ];
 
+// Quem usa o chat: estudantes e proprietários. O estudante abre a conversa
+// pelo anúncio e ela é com o dono dele, então o proprietário precisa ler e
+// responder. Administradores e contas sem perfil ficam de fora.
+export const CHAT_ACCOUNT_TYPES: readonly AccountType[] = [
+  AccountType.STUDENT_SEEKER,
+  AccountType.STUDENT_OFFERER,
+  AccountType.PROPERTY_OWNER,
+];
+
 export interface AccountProfilePresence {
   student: boolean;
   propertyOwner: boolean;

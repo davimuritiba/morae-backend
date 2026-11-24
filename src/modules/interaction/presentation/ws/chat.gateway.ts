@@ -5,7 +5,7 @@ import {
 } from '@nestjs/websockets';
 import type { Namespace, Socket } from 'socket.io';
 import {
-  STUDENT_ACCOUNT_TYPES,
+  CHAT_ACCOUNT_TYPES,
   type AccountType,
 } from '../../../user/domain/enums/account-type.enum.js';
 import { ACCOUNT_TYPE_ACCESS_DENIED } from '../../../user/domain/errors/account-type-access-denied.error.js';
@@ -47,7 +47,7 @@ export class ChatGateway implements OnGatewayInit<Namespace> {
     const accountType: AccountType = await this.users.findAccountType(
       payload.userId,
     );
-    if (!STUDENT_ACCOUNT_TYPES.includes(accountType)) {
+    if (!CHAT_ACCOUNT_TYPES.includes(accountType)) {
       throw new Error(ACCOUNT_TYPE_ACCESS_DENIED);
     }
 

@@ -53,7 +53,7 @@ describe('Chat (e2e)', () => {
   async function createUser(
     name: string,
     emailVerified = true,
-    profile: 'student' | 'propertyOwner' = 'student',
+    profile: 'student' | 'propertyOwner' | 'none' = 'student',
   ): Promise<TestUser> {
     const id = randomUUID();
     const email = `${id}@ufal.br`;
@@ -83,7 +83,7 @@ describe('Chat (e2e)', () => {
           updatedAt: new Date(),
         },
       });
-    } else {
+    } else if (profile === 'propertyOwner') {
       await prisma.propertyOwner.create({
         data: { id: randomUUID(), userId: id, updatedAt: new Date() },
       });
@@ -146,15 +146,45 @@ describe('Chat (e2e)', () => {
       .expect(401);
   });
 
-  it('restringe o chat a estudantes também no HTTP e no WebSocket', async () => {
+  it('proprietário lê e responde a conversa aberta pelo estudante, também em tempo real', async () => {
     const owner = await createUser('Proprietário', true, 'propertyOwner');
+    const student = await createUser('Estudante');
+
+    const ownerSocket = connect(owner.token);
+    await nextEvent(ownerSocket, 'connect');
+
+    const { body: chat } = await as(student)
+      .post('/chats/direct', { targetUserId: owner.id })
+      .expect(201);
+    const received = nextEvent<{ id: string }>(ownerSocket, 'message:new');
+    const { body: sent } = await as(student)
+      .post(`/chats/${chat.id}/messages`, { content: 'O quarto ainda está livre?' })
+      .expect(201);
+    expect(await received).toEqual(sent);
+
+    const inbox = await as(owner).get('/chats').expect(200);
+    expect(inbox.body.data).toHaveLength(1);
+    expect(inbox.body.data[0]).toMatchObject({ id: chat.id, unreadCount: 1 });
 
     await as(owner)
+      .post(`/chats/${chat.id}/messages`, { content: 'Está sim!' })
+      .expect(201);
+    const history = await as(student).get(`/chats/${chat.id}/messages`).expect(200);
+    expect(history.body.data.map((m: { content: string }) => m.content)).toEqual([
+      'Está sim!',
+      'O quarto ainda está livre?',
+    ]);
+  });
+
+  it('bloqueia o chat para conta sem perfil de estudante ou proprietário', async () => {
+    const other = await createUser('Sem perfil', true, 'none');
+
+    await as(other)
       .get('/chats')
       .expect(403)
       .expect((r) => expect(r.body.code).toBe('ACCOUNT_TYPE_ACCESS_DENIED'));
 
-    const socket = connect(owner.token);
+    const socket = connect(other.token);
     const rejected = nextEvent<Error>(socket, 'connect_error');
     await expect(rejected).resolves.toMatchObject({
       message: 'ACCOUNT_TYPE_ACCESS_DENIED',
