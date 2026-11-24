@@ -95,6 +95,7 @@ model User {
   // DDD + número, sem código do país (VO Phone).
   phone         String?       @db.VarChar(11)
   photoUrl      String?       @map("photo_url") @db.VarChar(2048)
+  profileData   Json?         @map("profile_data")
   emailVerified Boolean       @default(false) @map("email_verified")
   status        AccountStatus @default(ACTIVE)
   createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -111,7 +112,6 @@ model User {
   favorites               Favorite[]
   passwordResetTokens     PasswordResetToken[]
   interests               Interest[]
-  passwordResetTokens    PasswordResetToken[]
 
   @@map("users")
 }

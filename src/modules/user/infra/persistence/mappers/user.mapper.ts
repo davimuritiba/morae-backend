@@ -35,6 +35,10 @@ export class UserMapper {
       photoUrl: raw.photoUrl === null ? null : PhotoUrl.create(raw.photoUrl),
       emailVerified: raw.emailVerified,
       status: accountStatusToDomain[raw.status],
+      profileData: raw.profileData as Record<
+        string,
+        string | number | boolean | null | (string | number | boolean | null)[]
+      > | null,
       createdAt: raw.createdAt,
       updatedAt: raw.updatedAt,
     });
@@ -52,6 +56,7 @@ export class UserMapper {
       photoUrl: user.photoUrl?.value ?? null,
       emailVerified: user.emailVerified,
       status: accountStatusToPrisma[user.status],
+      profileData: user.profileData as PrismaUser['profileData'],
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

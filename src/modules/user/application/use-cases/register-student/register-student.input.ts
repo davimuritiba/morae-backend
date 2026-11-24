@@ -14,4 +14,5 @@ export interface RegisterStudentInput {
   expectedGraduation: Date;
   compatibilityAnswers: StudentCompatibilityAnswersInput;
   advertisesProperty?: boolean;
+  profileData?: Record<string, unknown>;
 }

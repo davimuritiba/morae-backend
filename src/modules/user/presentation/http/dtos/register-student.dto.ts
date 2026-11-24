@@ -6,6 +6,7 @@ import {
   IsInt,
   IsISO8601,
   IsOptional,
+  IsObject,
   IsString,
   MaxLength,
   ArrayMinSize,
@@ -88,4 +89,8 @@ export class RegisterStudentDto {
   @IsOptional()
   @IsBoolean()
   advertisesProperty?: boolean;
+
+  @IsOptional()
+  @IsObject()
+  profileData?: Record<string, unknown>;
 }

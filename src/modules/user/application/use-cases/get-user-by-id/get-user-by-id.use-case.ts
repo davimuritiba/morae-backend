@@ -16,6 +16,8 @@ export class GetUserByIdUseCase {
       userId: user.id,
       name: user.name,
       email: user.email.value,
+      cpf: user.cpf.value,
+      profileData: user.profileData,
       phone: user.phone?.value ?? null,
       photoUrl: user.photoUrl?.value ?? null,
       emailVerified: user.emailVerified,

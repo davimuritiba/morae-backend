@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class RegisterPropertyOwnerDto {
   @IsString()
@@ -21,4 +21,8 @@ export class RegisterPropertyOwnerDto {
   @IsString()
   @MaxLength(30)
   phone?: string | null;
+
+  @IsOptional()
+  @IsObject()
+  profileData?: Record<string, unknown>;
 }

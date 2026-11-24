@@ -4,6 +4,9 @@ export interface UpdateUserProfileOutput {
   userId: string;
   name: string;
   email: string;
+  cpf: string;
+  profileData:
+    import('../../../domain/entities/user.entity.js').UserProfileData | null;
   phone: string | null;
   photoUrl: string | null;
   emailVerified: boolean;

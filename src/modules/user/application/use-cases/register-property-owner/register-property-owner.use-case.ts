@@ -47,6 +47,7 @@ export class RegisterPropertyOwnerUseCase implements UseCase<
       cpf,
       passwordHash: await this.hasher.hash(password.value),
       phone,
+      profileData: input.profileData,
     });
     const propertyOwner = PropertyOwner.create({ userId: user.id });
 

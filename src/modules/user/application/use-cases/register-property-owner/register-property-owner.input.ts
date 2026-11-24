@@ -4,4 +4,5 @@ export interface RegisterPropertyOwnerInput {
   cpf: string;
   password: string;
   phone?: string | null;
+  profileData?: Record<string, unknown>;
 }
