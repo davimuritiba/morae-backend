@@ -17,6 +17,8 @@ import { Email } from '../../../domain/value-objects/email.vo.js';
 import { EnrollmentNumber } from '../../../domain/value-objects/enrollment-number.vo.js';
 import { Password } from '../../../domain/value-objects/password.vo.js';
 import { Phone } from '../../../domain/value-objects/phone.vo.js';
+import { UserProfileDetails } from '../../../domain/entities/user-profile-details.entity.js';
+import type { UserProfileDetailsRepository } from '../../../domain/repositories/user-profile-details.repository.js';
 import type { Hasher } from '../../ports/hasher.port.js';
 import type { SendEmailVerificationUseCase } from '../send-email-verification/send-email-verification.use-case.js';
 import type { RegisterStudentInput } from './register-student.input.js';
@@ -37,6 +39,8 @@ export class RegisterStudentUseCase implements UseCase<
     private readonly unitOfWork: UnitOfWork,
     private readonly sendEmailVerification: SendEmailVerificationUseCase,
     private readonly logger: Logger,
+    // Opcional para manter compatíveis os testes que não usam dados de perfil.
+    private readonly profileDetails?: UserProfileDetailsRepository,
   ) {}
 
   async execute(input: RegisterStudentInput): Promise<RegisterStudentOutput> {
@@ -45,6 +49,10 @@ export class RegisterStudentUseCase implements UseCase<
     const cpf = Cpf.create(input.cpf);
     const password = Password.create(input.password);
     const phone = input.phone ? Phone.create(input.phone) : null;
+    // Valida os dados de perfil antes de tocar no banco; o id real vem depois.
+    const draftDetails = input.profileDetails
+      ? UserProfileDetails.create('', input.profileDetails)
+      : null;
     const enrollmentNumber = EnrollmentNumber.create(input.enrollmentNumber);
     const period = AcademicPeriod.create(input.period);
 
@@ -87,9 +95,15 @@ export class RegisterStudentUseCase implements UseCase<
       ? PropertyOwner.create({ userId: user.id })
       : null;
 
+    const details =
+      draftDetails && !draftDetails.isEmpty && this.profileDetails
+        ? UserProfileDetails.restore(user.id, draftDetails.data, draftDetails.updatedAt)
+        : null;
+
     // 4. Persistência atômica: conta, estudante e, para ofertadores, perfil de proprietário.
     await this.unitOfWork.run(async () => {
       await this.users.save(user);
+      if (details) await this.profileDetails?.save(details);
       await this.students.save(student);
       if (propertyOwner) await this.propertyOwners.save(propertyOwner);
     });

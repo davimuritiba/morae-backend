@@ -1,3 +1,4 @@
+import { profileDetailsInput } from '../dtos/profile-details.dto.js';
 import { Body, Controller, Post } from '@nestjs/common';
 import { RegisterStudentUseCase } from '../../../application/use-cases/register-student/register-student.use-case.js';
 import { RegisterStudentDto } from '../dtos/register-student.dto.js';
@@ -20,6 +21,7 @@ export class StudentsController {
       cpf: dto.cpf,
       password: dto.password,
       phone: dto.phone ?? null,
+      profileDetails: profileDetailsInput(dto.profileDetails),
       enrollmentNumber: dto.enrollmentNumber,
       course: dto.course,
       period: dto.period,
