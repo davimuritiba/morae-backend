@@ -1,4 +1,5 @@
 import type { User } from '../../../domain/entities/user.entity.js';
+import type { AccountStatus } from '../../../domain/enums/account-status.enum.js';
 import { AccountType } from '../../../domain/enums/account-type.enum.js';
 import type { AccountType as AccountTypeValue } from '../../../domain/enums/account-type.enum.js';
 import { CpfAlreadyInUseError } from '../../../domain/errors/cpf-already-in-use.error.js';
@@ -51,9 +52,21 @@ export class InMemoryUserRepository extends UserRepository {
     return Promise.resolve(this.items.find((u) => u.id === id) ?? null);
   }
 
+  findAccountStatusById(userId: string): Promise<AccountStatus | null> {
+    return Promise.resolve(
+      this.items.find((user) => user.id === userId)?.status ?? null,
+    );
+  }
+
   findByEmail(email: Email): Promise<User | null> {
     return Promise.resolve(
       this.items.find((u) => u.email.equals(email)) ?? null,
+    );
+  }
+
+  findIdByEmail(email: Email): Promise<string | null> {
+    return Promise.resolve(
+      this.items.find((user) => user.email.equals(email))?.id ?? null,
     );
   }
 

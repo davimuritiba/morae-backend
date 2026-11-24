@@ -123,6 +123,36 @@ describe('Usuários e login (e2e)', () => {
         permissions: ['MODERATE_LISTINGS'],
       });
     });
+
+    it('autentica o administrador mesmo com CPF inválido no usuário associado', async () => {
+      const user = await createUser('Admin');
+      await prisma.administrator.create({
+        data: {
+          id: randomUUID(),
+          userId: user.id,
+          login: 'admin',
+          passwordHash,
+          permissions: ['MODERATE_LISTINGS'],
+          updatedAt: new Date(),
+        },
+      });
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { cpf: 'invalid-cpf' },
+      });
+
+      for (const login of ['admin', user.email]) {
+        const { body } = await http()
+          .post('/auth/admin/login')
+          .send({ login, password: PASSWORD })
+          .expect(201);
+        expect(body).toMatchObject({
+          userId: user.id,
+          login: 'admin',
+          permissions: ['MODERATE_LISTINGS'],
+        });
+      }
+    });
   });
 
   describe('limite de tentativas de login', () => {

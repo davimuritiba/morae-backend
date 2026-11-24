@@ -30,8 +30,10 @@ export class LoginAdministratorUseCase {
       throw new InvalidCredentialsError();
     }
 
-    const user = await this.users.findById(administrator.userId);
-    if (user === null || user.status !== AccountStatus.ACTIVE) {
+    const accountStatus = await this.users.findAccountStatusById(
+      administrator.userId,
+    );
+    if (accountStatus !== AccountStatus.ACTIVE) {
       throw new InvalidCredentialsError();
     }
 
@@ -57,7 +59,9 @@ export class LoginAdministratorUseCase {
     } catch {
       return null;
     }
-    const user = await this.users.findByEmail(email);
-    return user === null ? null : this.administrators.findByUserId(user.id);
+    const userId = await this.users.findIdByEmail(email);
+    return userId === null
+      ? null
+      : this.administrators.findByUserId(userId);
   }
 }

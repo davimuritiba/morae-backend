@@ -42,7 +42,9 @@ export abstract class UserRepository {
   abstract findAdminPage(query: AdminUserQuery): Promise<AdminUserPage>;
   abstract findAdminById(id: string): Promise<AdminUserRecord | null>;
   abstract findById(id: string): Promise<User | null>;
+  abstract findAccountStatusById(userId: string): Promise<AccountStatus | null>;
   abstract findByEmail(email: Email): Promise<User | null>;
+  abstract findIdByEmail(email: Email): Promise<string | null>;
   abstract findAccountType(userId: string): Promise<AccountType>;
   // Separados para o caso de uso saber qual erro lançar.
   abstract existsByEmail(email: Email): Promise<boolean>;

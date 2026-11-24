@@ -135,11 +135,29 @@ export class PrismaUserRepository extends UserRepository {
     return row ? UserMapper.toDomain(row) : null;
   }
 
+  async findAccountStatusById(userId: string): Promise<AccountStatus | null> {
+    if (!isUuid(userId)) return null;
+
+    const row = await this.db.client.user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    });
+    return row ? accountStatusFromPrisma[row.status] : null;
+  }
+
   async findByEmail(email: Email): Promise<User | null> {
     const row = await this.db.client.user.findUnique({
       where: { email: email.value },
     });
     return row ? UserMapper.toDomain(row) : null;
+  }
+
+  async findIdByEmail(email: Email): Promise<string | null> {
+    const row = await this.db.client.user.findUnique({
+      where: { email: email.value },
+      select: { id: true },
+    });
+    return row?.id ?? null;
   }
 
   async findAccountType(userId: string): Promise<AccountType> {
