@@ -472,6 +472,18 @@ Responde `204 No Content` quando a senha é alterada. Token inexistente, expirad
 
 ### `POST /students`
 
+Antes de enviar o cadastro, o front pode consultar os dados em uma chamada pública, sem criar registros:
+
+```json
+{
+  "cpf": "529.982.247-25",
+  "email": "maria@ufal.br",
+  "enrollmentNumber": "20231234"
+}
+```
+
+`POST /registration/availability` recebe `cpf`, `email` e `enrollmentNumber`, todos opcionais; ao menos um deve ser enviado. Responde `200 OK` com `valid` e `unique` apenas para os campos consultados, por exemplo `{ "cpf": { "valid": true, "unique": false } }`. `valid` verifica o formato e, no CPF, os dígitos verificadores; `unique` indica disponibilidade. Quando o formato é inválido, `unique` será `null`. O limite é de 10 consultas por minuto por IP (`429`). A resposta é informativa: o cadastro continua validando unicidade para evitar duplicidades em requisições simultâneas.
+
 O cadastro também exige o objeto compatibilityAnswers, com respostas estruturadas do formulário de convivência. O front deve converter os rótulos exibidos em códigos:
 
 | Campo | Valores aceitos |

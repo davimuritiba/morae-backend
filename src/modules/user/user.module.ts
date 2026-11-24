@@ -28,6 +28,7 @@ import { ChangeUserAccountStatusUseCase } from './application/use-cases/change-u
 import { GetAdminUserUseCase } from './application/use-cases/get-admin-user/get-admin-user.use-case.js';
 import { ListAdminUsersUseCase } from './application/use-cases/list-admin-users/list-admin-users.use-case.js';
 import { RegisterStudentUseCase } from './application/use-cases/register-student/register-student.use-case.js';
+import { CheckRegistrationAvailabilityUseCase } from './application/use-cases/check-registration-availability/check-registration-availability.use-case.js';
 import { RegisterPropertyOwnerUseCase } from './application/use-cases/register-property-owner/register-property-owner.use-case.js';
 import { ResendEmailVerificationUseCase } from './application/use-cases/resend-email-verification/resend-email-verification.use-case.js';
 import { SendEmailVerificationUseCase } from './application/use-cases/send-email-verification/send-email-verification.use-case.js';
@@ -57,6 +58,7 @@ import { PasswordResetController } from './presentation/http/controllers/passwor
 import { StudentsController } from './presentation/http/controllers/students.controller.js';
 import { PropertyOwnersController } from './presentation/http/controllers/property-owners.controller.js';
 import { UsersController } from './presentation/http/controllers/users.controller.js';
+import { RegistrationAvailabilityController } from './presentation/http/controllers/registration-availability.controller.js';
 const HOUR_MS = 60 * 60 * 1000;
 
 // Composition root do contexto user: é o único lugar que liga os contratos
@@ -70,6 +72,7 @@ const HOUR_MS = 60 * 60 * 1000;
     StudentsController,
     PropertyOwnersController,
     UsersController,
+    RegistrationAvailabilityController,
     EmailVerificationController,
     PasswordResetController,
   ],
@@ -305,6 +308,12 @@ const HOUR_MS = 60 * 60 * 1000;
         Logger,
         UserProfileDetailsRepository,
       ],
+    },
+    {
+      provide: CheckRegistrationAvailabilityUseCase,
+      useFactory: (users: UserRepository, students: StudentRepository) =>
+        new CheckRegistrationAvailabilityUseCase(users, students),
+      inject: [UserRepository, StudentRepository],
     },
     {
       provide: RegisterPropertyOwnerUseCase,
