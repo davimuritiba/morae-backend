@@ -41,10 +41,18 @@ describe('PATCH /users/me (e2e)', () => {
     await resetDatabase(prisma);
   });
 
-  async function authenticate() {
+  async function authenticate(options: {
+    profileDetails?: {
+      birthDate: string;
+      gender: string;
+      university: string;
+      campus: string;
+    };
+    profileData?: Record<string, unknown>;
+  } = {}) {
     const registration = await request(app.getHttpServer())
       .post('/students')
-      .send(student)
+      .send({ ...student, ...options })
       .expect(201);
     // O login exige e-mail confirmado; o fluxo do link é coberto em
     // email-verification.e2e-spec.ts.
@@ -67,6 +75,58 @@ describe('PATCH /users/me (e2e)', () => {
       .patch('/users/me')
       .send({ name: 'Novo nome' })
       .expect(401);
+  });
+
+  it('retorna dados de perfil enviados no cadastro', async () => {
+    const profileDetails = {
+      birthDate: '2000-03-31',
+      gender: 'NON_BINARY',
+      university: 'UFAL',
+      campus: 'A. C. Simoes',
+    };
+    const { token } = await authenticate({ profileDetails });
+
+    const response = await request(app.getHttpServer())
+      .get('/users/me/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      student: {
+        university: profileDetails.university,
+        campus: profileDetails.campus,
+      },
+      private: {
+        birthDate: profileDetails.birthDate,
+        gender: profileDetails.gender,
+      },
+    });
+  });
+
+  it('retorna os campos de perfil salvos no profileData legado', async () => {
+    const profileData = {
+      birthDate: '2000-03-31',
+      gender: 'Não binário',
+      university: 'UFAL',
+      campus: 'A. C. Simoes',
+    };
+    const { token } = await authenticate({ profileData });
+
+    const response = await request(app.getHttpServer())
+      .get('/users/me/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      student: {
+        university: profileData.university,
+        campus: profileData.campus,
+      },
+      private: {
+        birthDate: profileData.birthDate,
+        gender: 'NON_BINARY',
+      },
+    });
   });
 
   it('atualiza e persiste somente os dados permitidos da conta autenticada', async () => {

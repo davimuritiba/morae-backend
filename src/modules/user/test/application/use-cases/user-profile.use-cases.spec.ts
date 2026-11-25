@@ -202,6 +202,28 @@ describe('Perfil do usuário', () => {
     expect(profile.student?.course).toBe('Ciência da Computação');
   });
 
+  it('recupera do profileData legado os campos que não existem em profileDetails', async () => {
+    const { userId } = await registerStudent.execute(
+      studentInput({
+        profileDetails: undefined,
+        profileData: {
+          birthDate: '2004-05-18',
+          gender: 'Não binário',
+          university: 'UFAL',
+          campus: 'A. C. Simões',
+        },
+      }),
+    );
+
+    const profile = await getProfile.execute({ viewerId: userId, targetUserId: userId });
+
+    expect(profile).toMatchObject({
+      age: 22,
+      student: { university: 'UFAL', campus: 'A. C. Simões' },
+      private: { birthDate: '2004-05-18', gender: Gender.NON_BINARY },
+    });
+  });
+
   it('usuário inexistente gera erro', async () => {
     await expect(getProfile.execute({ viewerId: 'x', targetUserId: 'nao-existe' })).rejects.toBeInstanceOf(
       UserNotFoundError,
