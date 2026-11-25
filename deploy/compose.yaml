@@ -33,7 +33,12 @@ services:
     build:
       context: ..
       target: build
-    command: ['npx', '--no-install', 'prisma', 'migrate', 'deploy']
+    command:
+      - sh
+      - -c
+      - >-
+        node prisma/resolve-duplicate-interest-migration.mjs
+        && npx --no-install prisma migrate deploy
     environment:
       DATABASE_URL: *database-url
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?defina SEED_ADMIN_PASSWORD no deploy/.env}
