@@ -14,7 +14,12 @@ export interface OwnedListingSummary {
   rent: number;
   interestedCount: number;
   photoUrl: string | null;
-  status: ListingStatus.APPROVED | ListingStatus.ARCHIVED;
+  status:
+    | ListingStatus.PENDING
+    | ListingStatus.IN_REVIEW
+    | ListingStatus.APPROVED
+    | ListingStatus.REJECTED
+    | ListingStatus.ARCHIVED;
 }
 
 export abstract class OwnerListingRepository {
