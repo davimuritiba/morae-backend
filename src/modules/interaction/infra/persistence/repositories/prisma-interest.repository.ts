@@ -6,18 +6,25 @@ import {
 import { PrismaService } from '../../../../../shared/infra/database/prisma.service.js';
 import { InterestAccessDeniedError } from '../../../domain/errors/interest-access-denied.error.js';
 import { InterestNotFoundError } from '../../../domain/errors/interest-not-found.error.js';
+<<<<<<< HEAD
 import { InterestSelfActionDeniedError } from '../../../domain/errors/interest-self-action-denied.error.js';
 import { InvalidInterestTransitionError } from '../../../domain/errors/invalid-interest-transition.error.js';
 import {
   canOwnerTransitionInterestStatus,
   InterestStatus,
 } from '../../../domain/enums/interest-status.enum.js';
+=======
+>>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
 import { ListingNotFoundError } from '../../../domain/errors/listing-not-found.error.js';
 import { InterestRepository } from '../../../domain/repositories/interest.repository.js';
 import type {
   InterestedUserView,
   InterestReceipt,
+<<<<<<< HEAD
   MyInterestView,
+=======
+  InterestStatus,
+>>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
   ReceivedInterestView,
 } from '../../../domain/repositories/interest.repository.js';
 
@@ -77,6 +84,7 @@ export class PrismaInterestRepository extends InterestRepository {
       throw new InterestSelfActionDeniedError();
     }
 
+<<<<<<< HEAD
     const receipt = await this.prisma.$transaction(async (transaction) => {
       const interest = await transaction.interest.upsert({
         where: { userId_listingId: { userId, listingId } },
@@ -96,12 +104,21 @@ export class PrismaInterestRepository extends InterestRepository {
         where: { userId_listingId: { userId, listingId } },
         select: { listingId: true, status: true, createdAt: true, updatedAt: true },
       });
+=======
+    const now = new Date();
+    return this.prisma.interest.upsert({
+      where: { userId_listingId: { userId, listingId } },
+      create: { userId, listingId, status: PrismaInterestStatus.PENDING, updatedAt: now },
+      update: { status: PrismaInterestStatus.PENDING, createdAt: now, updatedAt: now },
+      select: { listingId: true, status: true, createdAt: true, updatedAt: true },
+>>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
     });
     return mapInterestReceipt(receipt);
   }
 
   async remove(userId: string, listingId: string): Promise<void> {
     await this.prisma.interest.updateMany({
+<<<<<<< HEAD
       where: { userId, listingId, status: { not: PrismaInterestStatus.WITHDRAWN } },
       data: { status: PrismaInterestStatus.WITHDRAWN },
     });
@@ -115,6 +132,11 @@ export class PrismaInterestRepository extends InterestRepository {
     return interest
       ? { ...interest, status: mapInterestStatus(interest.status) }
       : null;
+=======
+      where: { userId, listingId },
+      data: { status: PrismaInterestStatus.WITHDRAWN, updatedAt: new Date() },
+    });
+>>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
   }
 
   async listForListing(
@@ -281,5 +303,77 @@ export class PrismaInterestRepository extends InterestRepository {
       where,
       select: { listingId: true, status: true, createdAt: true, updatedAt: true },
     }));
+  }
+
+  async listReceived(ownerUserId: string): Promise<ReceivedInterestView[]> {
+    const interests = await this.prisma.interest.findMany({
+      where: { listing: { property: { owner: { userId: ownerUserId } } } },
+      select: {
+        userId: true,
+        status: true,
+        createdAt: true,
+        listing: {
+          select: {
+            id: true,
+            title: true,
+            property: {
+              select: {
+                residence: { select: { neighborhood: true, city: true } },
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+            student: { select: { course: true, period: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return interests.map(({ userId, status, createdAt, listing, user }) => ({
+      userId,
+      listingId: listing.id,
+      listingTitle: listing.title,
+      neighborhood: listing.property.residence.neighborhood,
+      city: listing.property.residence.city,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      course: user.student?.course ?? null,
+      period: user.student?.period ?? null,
+      status,
+      interestedAt: createdAt,
+    }));
+  }
+
+  async updateStatus(
+    ownerUserId: string,
+    listingId: string,
+    interestedUserId: string,
+    status: InterestStatus,
+  ): Promise<InterestReceipt> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { property: { select: { owner: { select: { userId: true } } } } },
+    });
+    if (!listing) throw new ListingNotFoundError();
+    if (listing.property.owner.userId !== ownerUserId) {
+      throw new InterestAccessDeniedError();
+    }
+
+    const where = { userId_listingId: { userId: interestedUserId, listingId } };
+    const existingInterest = await this.prisma.interest.findUnique({ where, select: { userId: true } });
+    if (!existingInterest) throw new InterestNotFoundError();
+
+    return this.prisma.interest.update({
+      where,
+      data: { status: status as PrismaInterestStatus, updatedAt: new Date() },
+      select: { listingId: true, status: true, createdAt: true, updatedAt: true },
+    });
   }
 }
