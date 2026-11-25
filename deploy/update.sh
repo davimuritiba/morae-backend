@@ -9,6 +9,10 @@ git -C "${FRONTEND_DIR:-../../pds-morae}" pull --ff-only
 
 docker compose build
 
+# Resolve the duplicate migration only when the canonical migration and its
+# schema are already present and the older migration is marked as failed.
+docker compose run --rm migrate node prisma/resolve-duplicate-interest-migration.mjs
+
 # Sobe o que estiver parado e aplica as migrations (serviço migrate).
 docker compose up -d --remove-orphans
 

@@ -1,11 +1,3 @@
-CREATE TYPE "InterestStatus" AS ENUM (
-  'PENDING',
-  'IN_CONVERSATION',
-  'ACCEPTED',
-  'REJECTED',
-  'WITHDRAWN'
-);
-
-ALTER TABLE "interests"
-ADD COLUMN "status" "InterestStatus" NOT NULL DEFAULT 'PENDING',
-ADD COLUMN "updated_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+-- Intentionally empty. The equivalent schema change is owned by
+-- 20261204120000_add_interest_status. Keep this migration directory so an
+-- existing failed migration can be safely resolved during deployment.
