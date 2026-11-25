@@ -23,7 +23,15 @@ export class PrismaOwnerListingRepository extends OwnerListingRepository {
     const listings = await this.prisma.listing.findMany({
       where: {
         property: { is: { owner: { is: { userId } } } },
-        status: { in: [PrismaListingStatus.APPROVED, PrismaListingStatus.ARCHIVED] },
+        status: {
+          in: [
+            PrismaListingStatus.PENDING,
+            PrismaListingStatus.IN_REVIEW,
+            PrismaListingStatus.APPROVED,
+            PrismaListingStatus.REJECTED,
+            PrismaListingStatus.ARCHIVED,
+          ],
+        },
       },
       include: {
         property: {
@@ -56,7 +64,12 @@ export class PrismaOwnerListingRepository extends OwnerListingRepository {
       rent: Number(listing.rent),
       interestedCount: listing._count.interests,
       photoUrl: listing.media[0]?.url ?? null,
-      status: listing.status as ListingStatus.APPROVED | ListingStatus.ARCHIVED,
+      status: listing.status as
+        | ListingStatus.PENDING
+        | ListingStatus.IN_REVIEW
+        | ListingStatus.APPROVED
+        | ListingStatus.REJECTED
+        | ListingStatus.ARCHIVED,
     }));
   }
 
