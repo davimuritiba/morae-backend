@@ -18,7 +18,7 @@ RUN apt-get update \
 # qualquer. O valor real vem do compose em tempo de execução.
 ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
 
-COPY package.json package-lock.json prisma7.config.ts ./
+COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma
 RUN npm ci
 

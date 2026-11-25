@@ -35,17 +35,12 @@ import { RemoveFavoriteUseCase } from './application/use-cases/remove-favorite/r
 import { AddInterestUseCase } from './application/use-cases/add-interest/add-interest.use-case.js';
 import { RemoveInterestUseCase } from './application/use-cases/remove-interest/remove-interest.use-case.js';
 import { ListInterestedUsersUseCase } from './application/use-cases/list-interested-users/list-interested-users.use-case.js';
-<<<<<<< HEAD
 import { GetMyInterestUseCase } from './application/use-cases/get-my-interest/get-my-interest.use-case.js';
 import { ListReceivedInterestsUseCase } from './application/use-cases/list-received-interests/list-received-interests.use-case.js';
 import { UpdateInterestStatusUseCase } from './application/use-cases/update-interest-status/update-interest-status.use-case.js';
 import { SubmitReviewUseCase } from './application/use-cases/submit-review/submit-review.use-case.js';
 import { ListUserReviewsUseCase } from './application/use-cases/list-user-reviews/list-user-reviews.use-case.js';
 import { ListEligibleReviewContractsUseCase } from './application/use-cases/list-eligible-review-contracts/list-eligible-review-contracts.use-case.js';
-=======
-import { ListReceivedInterestsUseCase } from './application/use-cases/list-received-interests/list-received-interests.use-case.js';
-import { UpdateInterestStatusUseCase } from './application/use-cases/update-interest-status/update-interest-status.use-case.js';
->>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
 import { InterestsController } from './presentation/http/controllers/interests.controller.js';
 import { ReviewsController } from './presentation/http/controllers/reviews.controller.js';
 import { ReviewRepository } from './domain/repositories/review.repository.js';
@@ -97,7 +92,6 @@ import { SocketChatNotifier } from './presentation/ws/socket-chat-notifier.js';
       inject: [InterestRepository],
     },
     {
-<<<<<<< HEAD
       provide: GetMyInterestUseCase,
       useFactory: (interests: InterestRepository) => new GetMyInterestUseCase(interests),
       inject: [InterestRepository],
@@ -106,15 +100,10 @@ import { SocketChatNotifier } from './presentation/ws/socket-chat-notifier.js';
       provide: ListReceivedInterestsUseCase,
       useFactory: (interests: InterestRepository) =>
         new ListReceivedInterestsUseCase(interests),
-=======
-      provide: ListReceivedInterestsUseCase,
-      useFactory: (interests: InterestRepository) => new ListReceivedInterestsUseCase(interests),
->>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
       inject: [InterestRepository],
     },
     {
       provide: UpdateInterestStatusUseCase,
-<<<<<<< HEAD
       useFactory: (interests: InterestRepository) =>
         new UpdateInterestStatusUseCase(interests),
       inject: [InterestRepository],
@@ -136,11 +125,6 @@ import { SocketChatNotifier } from './presentation/ws/socket-chat-notifier.js';
         new ListEligibleReviewContractsUseCase(reviews, clock),
       inject: [ReviewRepository, Clock],
     },
-=======
-      useFactory: (interests: InterestRepository) => new UpdateInterestStatusUseCase(interests),
-      inject: [InterestRepository],
-    },
->>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
     ChatGateway,
     { provide: ChatNotifier, useClass: SocketChatNotifier },
     { provide: Clock, useClass: SystemClock },
