@@ -12,8 +12,8 @@ export interface GetUserProfileInput {
 }
 
 // Perfil completo de um usuário. Quem vê o próprio perfil recebe também os
-// dados privados (e-mail, telefone, nascimento, endereço); os demais veem só a
-// idade, a cidade e as preferências.
+// dados privados (e-mail, CPF, telefone, nascimento, endereço); os demais veem
+// só a idade, a cidade e as preferências.
 export class GetUserProfileUseCase {
   constructor(
     private readonly users: UserRepository,
@@ -86,6 +86,7 @@ export class GetUserProfileUseCase {
       private: isSelf
         ? {
             email: user.email.value,
+            cpf: user.cpf.value,
             phone: user.phone?.value ?? null,
             birthDate: data?.birthDate ? data.birthDate.toISOString().slice(0, 10) : null,
             gender: data?.gender ?? null,

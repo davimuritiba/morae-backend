@@ -1,5 +1,5 @@
 import { GetListingUseCase } from '../../../application/use-cases/get-listing/get-listing.use-case.js';
-import { SearchListingsUseCase } from '../../../application/use-cases/search-listings/search-listings.use-case.js';
+import { GetOwnedListingsUseCase, SearchListingsUseCase } from '../../../application/use-cases/search-listings/search-listings.use-case.js';
 import { ListingNotFoundError } from '../../../domain/errors/listing-not-found.error.js';
 import type {
   ListingRepository,
@@ -29,6 +29,8 @@ const listing: ListingSearchResult = {
 class FakeListingRepository implements ListingRepository {
   searchFilters: SearchListingsFilter[] = [];
   listing: ListingSearchResult | null = listing;
+  ownedListings = [{ ...listing, status: 'PENDING' as const }];
+  requestedOwnerId = '';
 
   async search(filter: SearchListingsFilter): Promise<ListingSearchResult[]> {
     this.searchFilters.push(filter);
@@ -37,6 +39,11 @@ class FakeListingRepository implements ListingRepository {
 
   async findApprovedById(): Promise<ListingSearchResult | null> {
     return this.listing;
+  }
+
+  async findOwnedByUserId(userId: string) {
+    this.requestedOwnerId = userId;
+    return this.ownedListings;
   }
 }
 
@@ -77,5 +84,23 @@ describe('GetListingUseCase', () => {
     await expect(
       new GetListingUseCase(repository).execute({ listingId: LISTING_ID }),
     ).rejects.toBeInstanceOf(ListingNotFoundError);
+  });
+});
+
+describe('GetOwnedListingsUseCase', () => {
+  it('carrega os anúncios da conta indicada, incluindo o estado de moderação', async () => {
+    const repository = new FakeListingRepository();
+
+    await expect(new GetOwnedListingsUseCase(repository).execute('owner-id'))
+      .resolves.toEqual([{ ...listing, status: 'PENDING' }]);
+    expect(repository.requestedOwnerId).toBe('owner-id');
+  });
+
+  it('retorna uma lista vazia quando a conta ainda não cadastrou anúncios', async () => {
+    const repository = new FakeListingRepository();
+    repository.ownedListings = [];
+
+    await expect(new GetOwnedListingsUseCase(repository).execute('owner-id'))
+      .resolves.toEqual([]);
   });
 });

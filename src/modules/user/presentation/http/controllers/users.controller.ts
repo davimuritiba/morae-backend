@@ -1,4 +1,3 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import {
   BadRequestException,
   Body,
@@ -25,6 +24,7 @@ import { UpdateMyProfileUseCase } from '../../../application/use-cases/update-my
 import { UpdateUserProfileUseCase } from '../../../application/use-cases/update-user-profile/update-user-profile.use-case.js';
 import { StudentRepository } from '../../../domain/repositories/student.repository.js';
 import { PropertyOwnerRepository } from '../../../domain/repositories/property-owner.repository.js';
+import type { UpdateUserProfileOutput } from '../../../application/use-cases/update-user-profile/update-user-profile.output.js';
 import { profileDetailsInput } from '../dtos/profile-details.dto.js';
 import { UpdateMyProfileDto } from '../dtos/update-my-profile.dto.js';
 import { UpdateUserProfileDto } from '../dtos/update-user-profile.dto.js';
@@ -56,22 +56,18 @@ export class UsersController {
   async uploadMyPhoto(
     @CurrentUserId() userId: string,
     @UploadedFile() photo: Express.Multer.File | undefined,
-  ): Promise<GetUserByIdResponse> {
+  ): Promise<UpdateUserProfileOutput> {
     if (!photo) {
       throw new BadRequestException('Envie a foto no campo "photo".');
     }
-    return GetUserByIdPresenter.toHttp(
-      await this.changeUserPhoto.execute({ userId, file: photo }),
-    );
+    return this.changeUserPhoto.execute({ userId, file: photo });
   }
 
   @Delete('me/photo')
   async removeMyPhoto(
     @CurrentUserId() userId: string,
-  ): Promise<GetUserByIdResponse> {
-    return GetUserByIdPresenter.toHttp(
-      await this.changeUserPhoto.execute({ userId, file: null }),
-    );
+  ): Promise<UpdateUserProfileOutput> {
+    return this.changeUserPhoto.execute({ userId, file: null });
   }
 
   // Rotas de /me antes das de /:id, para "me" não ser lido como id.
@@ -131,14 +127,13 @@ export class UsersController {
   async updateMe(
     @CurrentUserId() userId: string,
     @Body() dto: UpdateUserProfileDto,
-  ): Promise<GetUserByIdResponse> {
-    const output = await this.updateUserProfile.execute({
+  ): Promise<UpdateUserProfileOutput> {
+    return this.updateUserProfile.execute({
       userId,
       name: dto.name,
       email: dto.email,
       cpf: dto.cpf,
       phone: dto.phone,
     });
-    return GetUserByIdPresenter.toHttp(output);
   }
 }

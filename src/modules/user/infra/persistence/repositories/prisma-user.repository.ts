@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../../shared/infra/database/generated/prisma/client.js';
 import { rethrowUniqueViolation } from '../../../../../shared/infra/database/prisma-errors.js';
 import { PrismaTransactionContext } from '../../../../../shared/infra/database/prisma-transaction-context.js';
 import { isUuid } from '../../../../../shared/infra/database/uuid.js';
-import type {
-  AccountStatus as PrismaAccountStatus,
+import {
   Prisma,
+  type AccountStatus as PrismaAccountStatus,
 } from '../../../../../shared/infra/database/generated/prisma/client.js';
 import type { User } from '../../../domain/entities/user.entity.js';
 import { AccountStatus } from '../../../domain/enums/account-status.enum.js';

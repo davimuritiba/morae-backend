@@ -1,7 +1,6 @@
-import { IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ProfileDetailsDto } from './profile-details.dto.js';
 import { Type } from 'class-transformer';
-import { IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsObject, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 
 export class RegisterPropertyOwnerDto {
   @IsString()

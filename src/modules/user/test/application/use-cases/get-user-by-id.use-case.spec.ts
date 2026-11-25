@@ -29,6 +29,7 @@ describe('GetUserByIdUseCase', () => {
       userId: user.id,
       name: 'Maria Silva',
       email: 'maria@ufal.br',
+      cpf: '52998224725',
       phone: '82999991234',
       photoUrl: null,
       emailVerified: false,

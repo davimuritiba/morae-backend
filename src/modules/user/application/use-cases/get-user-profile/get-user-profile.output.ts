@@ -30,6 +30,7 @@ export interface HousingPreferencesView {
 // Dados que só a própria pessoa vê.
 export interface PrivateProfileView {
   email: string;
+  cpf: string;
   phone: string | null;
   birthDate: string | null; // AAAA-MM-DD
   gender: Gender | null;

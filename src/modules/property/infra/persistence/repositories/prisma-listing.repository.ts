@@ -10,6 +10,7 @@ import { MediaType } from '../../../domain/enums/media-type.enum.js';
 import { ListingRepository } from '../../../domain/repositories/listing.repository.js';
 import type {
   ListingSearchResult,
+  OwnedListingResult,
   SearchListingsFilter,
 } from '../../../domain/repositories/listing.repository.js';
 
@@ -85,6 +86,22 @@ export class PrismaListingRepository extends ListingRepository {
       include: listingSearchInclude,
     });
     return row ? this.toSearchResult(row) : null;
+  }
+
+  async findOwnedByUserId(userId: string): Promise<OwnedListingResult[]> {
+    const rows = await this.prisma.listing.findMany({
+      where: {
+        property: { is: { owner: { is: { userId } } } },
+        status: { not: ListingStatus.REMOVED },
+      },
+      include: listingSearchInclude,
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    });
+
+    return rows.map((row) => ({
+      ...this.toSearchResult(row),
+      status: row.status as unknown as OwnedListingResult['status'],
+    }));
   }
 
   private toSearchResult(row: ListingWithSearchDetails): ListingSearchResult {

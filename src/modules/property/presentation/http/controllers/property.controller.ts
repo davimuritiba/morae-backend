@@ -30,7 +30,7 @@ import { ListOwnerListingsUseCase, ManageOwnerListingUseCase } from '../../../ap
 import { RemoveOwnerListingUseCase } from '../../../application/use-cases/manage-owner-listing/remove-owner-listing.use-case.js';
 import type { PublishPropertyInput } from '../../../application/use-cases/publish-property/publish-property.input.js';
 import { PublishPropertyUseCase } from '../../../application/use-cases/publish-property/publish-property.use-case.js';
-import { SearchListingsUseCase } from '../../../application/use-cases/search-listings/search-listings.use-case.js';
+import { GetOwnedListingsUseCase, SearchListingsUseCase } from '../../../application/use-cases/search-listings/search-listings.use-case.js';
 import { PropertyMediaStorage } from '../../../infra/media/property-media-storage.js';
 import { CurrentUserId } from '../../../../../shared/presentation/decorators/current-user-id.decorator.js';
 import {
@@ -48,6 +48,7 @@ export class PropertyController {
   constructor(
     private readonly publishProperty: PublishPropertyUseCase,
     private readonly searchListings: SearchListingsUseCase,
+    private readonly getOwnedListings: GetOwnedListingsUseCase,
     private readonly getListing: GetListingUseCase,
     private readonly manageOwnerListing: ManageOwnerListingUseCase,
     private readonly listOwnerListings: ListOwnerListingsUseCase,
