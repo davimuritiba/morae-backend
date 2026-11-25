@@ -14,11 +14,34 @@ export interface InterestedUserView {
   updatedAt: Date;
 }
 
+export type InterestStatus =
+  | 'PENDING'
+  | 'IN_CONVERSATION'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'WITHDRAWN';
+
+export interface ReceivedInterestView {
+  userId: string;
+  listingId: string;
+  listingTitle: string;
+  neighborhood: string;
+  city: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  course: string | null;
+  period: number | null;
+  status: InterestStatus;
+  interestedAt: Date;
+}
+
 export interface InterestReceipt {
   listingId: string;
   status: InterestStatus;
   createdAt: Date;
   updatedAt: Date;
+<<<<<<< HEAD
 }
 
 export interface MyInterestView {
@@ -33,6 +56,8 @@ export interface ReceivedInterestView extends InterestedUserView {
   listingTitle: string;
   neighborhood: string;
   city: string;
+=======
+>>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
 }
 
 export abstract class InterestRepository {
@@ -43,7 +68,11 @@ export abstract class InterestRepository {
     ownerUserId: string,
     listingId: string,
   ): Promise<InterestedUserView[]>;
+<<<<<<< HEAD
   abstract listForOwner(ownerUserId: string): Promise<ReceivedInterestView[]>;
+=======
+  abstract listReceived(ownerUserId: string): Promise<ReceivedInterestView[]>;
+>>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
   abstract updateStatus(
     ownerUserId: string,
     listingId: string,

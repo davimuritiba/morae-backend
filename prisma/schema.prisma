@@ -39,6 +39,14 @@ enum Permission {
   VIEW_REPORTS
 }
 
+enum InterestStatus {
+  PENDING
+  IN_CONVERSATION
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
 enum HousingType {
   APARTMENT
   HOUSE
@@ -514,11 +522,19 @@ model Favorite {
 }
 
 model Interest {
+<<<<<<< HEAD
   userId    String         @map("user_id") @db.Uuid
   listingId String         @map("listing_id") @db.Uuid
   status    InterestStatus @default(PENDING)
   createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+=======
+  userId    String   @map("user_id") @db.Uuid
+  listingId String   @map("listing_id") @db.Uuid
+  status    InterestStatus @default(PENDING)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
+>>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
