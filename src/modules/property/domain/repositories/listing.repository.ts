@@ -1,4 +1,5 @@
 import type { HousingType } from '../enums/housing-type.enum.js';
+import type { ListingStatus } from '../enums/listing-status.enum.js';
 import type { MediaType } from '../enums/media-type.enum.js';
 
 export interface ListingSearchResult {
@@ -19,6 +20,10 @@ export interface ListingSearchResult {
   createdAt: Date;
 }
 
+export interface OwnedListingResult extends ListingSearchResult {
+  status: ListingStatus;
+}
+
 export interface SearchListingsFilter {
   location?: string;
   maxRent?: number;
@@ -36,4 +41,5 @@ export enum ListingSortBy {
 export abstract class ListingRepository {
   abstract search(filter: SearchListingsFilter): Promise<ListingSearchResult[]>;
   abstract findApprovedById(listingId: string): Promise<ListingSearchResult | null>;
+  abstract findOwnedByUserId(userId: string): Promise<OwnedListingResult[]>;
 }

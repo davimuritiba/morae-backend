@@ -7,7 +7,7 @@ import { ModerateAdminListingUseCase } from './application/use-cases/moderate-ad
 import { ManageOwnerListingUseCase } from './application/use-cases/manage-owner-listing/manage-owner-listing.use-case.js';
 import { RemoveOwnerListingUseCase } from './application/use-cases/manage-owner-listing/remove-owner-listing.use-case.js';
 import { PublishPropertyUseCase } from './application/use-cases/publish-property/publish-property.use-case.js';
-import { SearchListingsUseCase } from './application/use-cases/search-listings/search-listings.use-case.js';
+import { GetOwnedListingsUseCase, SearchListingsUseCase } from './application/use-cases/search-listings/search-listings.use-case.js';
 import { AdminListingRepository } from './domain/repositories/admin-listing.repository.js';
 import { ListingRepository } from './domain/repositories/listing.repository.js';
 import { OwnerListingRepository } from './domain/repositories/owner-listing.repository.js';
@@ -55,6 +55,12 @@ import { PropertyController } from './presentation/http/controllers/property.con
       provide: SearchListingsUseCase,
       useFactory: (listings: ListingRepository) =>
         new SearchListingsUseCase(listings),
+      inject: [ListingRepository],
+    },
+    {
+      provide: GetOwnedListingsUseCase,
+      useFactory: (listings: ListingRepository) =>
+        new GetOwnedListingsUseCase(listings),
       inject: [ListingRepository],
     },
     {

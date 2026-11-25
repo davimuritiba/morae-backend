@@ -15,3 +15,11 @@ export class SearchListingsUseCase implements UseCase<SearchListingsFilter, List
     });
   }
 }
+
+export class GetOwnedListingsUseCase {
+  constructor(private readonly listings: ListingRepository) {}
+
+  execute(userId: string) {
+    return this.listings.findOwnedByUserId(userId);
+  }
+}
