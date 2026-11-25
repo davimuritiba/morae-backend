@@ -3,6 +3,17 @@ import { InvalidListingTransitionError } from '../../../domain/errors/invalid-li
 import { ListingNotFoundError } from '../../../domain/errors/listing-not-found.error.js';
 import { ListingStatus } from '../../../domain/enums/listing-status.enum.js';
 import type { OwnerListingRepository } from '../../../domain/repositories/owner-listing.repository.js';
+import type { OwnedListingSummary } from '../../../domain/repositories/owner-listing.repository.js';
+
+export class ListOwnerListingsUseCase
+  implements UseCase<{ userId: string }, OwnedListingSummary[]>
+{
+  constructor(private readonly listings: OwnerListingRepository) {}
+
+  execute(input: { userId: string }): Promise<OwnedListingSummary[]> {
+    return this.listings.listOwned(input.userId);
+  }
+}
 
 export interface ManageOwnerListingInput {
   userId: string;

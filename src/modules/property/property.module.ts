@@ -4,7 +4,7 @@ import { GetAdminListingUseCase } from './application/use-cases/get-admin-listin
 import { GetListingUseCase } from './application/use-cases/get-listing/get-listing.use-case.js';
 import { ListAdminListingsUseCase } from './application/use-cases/list-admin-listings/list-admin-listings.use-case.js';
 import { ModerateAdminListingUseCase } from './application/use-cases/moderate-admin-listing/moderate-admin-listing.use-case.js';
-import { ManageOwnerListingUseCase } from './application/use-cases/manage-owner-listing/manage-owner-listing.use-case.js';
+import { ListOwnerListingsUseCase, ManageOwnerListingUseCase } from './application/use-cases/manage-owner-listing/manage-owner-listing.use-case.js';
 import { RemoveOwnerListingUseCase } from './application/use-cases/manage-owner-listing/remove-owner-listing.use-case.js';
 import { PublishPropertyUseCase } from './application/use-cases/publish-property/publish-property.use-case.js';
 import { SearchListingsUseCase } from './application/use-cases/search-listings/search-listings.use-case.js';
@@ -95,6 +95,11 @@ import { PropertyController } from './presentation/http/controllers/property.con
       provide: ManageOwnerListingUseCase,
       useFactory: (listings: OwnerListingRepository) =>
         new ManageOwnerListingUseCase(listings),
+      inject: [OwnerListingRepository],
+    },
+    {
+      provide: ListOwnerListingsUseCase,
+      useFactory: (listings: OwnerListingRepository) => new ListOwnerListingsUseCase(listings),
       inject: [OwnerListingRepository],
     },
     {

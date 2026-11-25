@@ -26,7 +26,7 @@ import { MAX_IMAGE_BYTES } from '../../../../../shared/infra/media/public-image-
 import { ReorderListingPhotosDto } from '../dtos/reorder-listing-photos.dto.js';
 import { PROPERTY_OWNER_ACCOUNT_TYPES } from '../../../../user/domain/enums/account-type.enum.js';
 import { GetListingUseCase } from '../../../application/use-cases/get-listing/get-listing.use-case.js';
-import { ManageOwnerListingUseCase } from '../../../application/use-cases/manage-owner-listing/manage-owner-listing.use-case.js';
+import { ListOwnerListingsUseCase, ManageOwnerListingUseCase } from '../../../application/use-cases/manage-owner-listing/manage-owner-listing.use-case.js';
 import { RemoveOwnerListingUseCase } from '../../../application/use-cases/manage-owner-listing/remove-owner-listing.use-case.js';
 import type { PublishPropertyInput } from '../../../application/use-cases/publish-property/publish-property.input.js';
 import { PublishPropertyUseCase } from '../../../application/use-cases/publish-property/publish-property.use-case.js';
@@ -50,6 +50,7 @@ export class PropertyController {
     private readonly searchListings: SearchListingsUseCase,
     private readonly getListing: GetListingUseCase,
     private readonly manageOwnerListing: ManageOwnerListingUseCase,
+    private readonly listOwnerListings: ListOwnerListingsUseCase,
     private readonly removeOwnerListing: RemoveOwnerListingUseCase,
     private readonly mediaStorage: PropertyMediaStorage,
     private readonly listingPhotos: ManageListingPhotosUseCase,
@@ -119,6 +120,12 @@ export class PropertyController {
       minBedrooms: query.minBedrooms,
       sortBy: query.sortBy,
     });
+  }
+
+  @Get('mine')
+  @UseGuards(JwtAuthGuard)
+  listMine(@CurrentUserId() userId: string) {
+    return this.listOwnerListings.execute({ userId });
   }
 
   @Get(':listingId')
