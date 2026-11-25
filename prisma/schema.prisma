@@ -63,13 +63,6 @@ enum ListingStatus {
   REMOVED
 }
 
-enum InterestStatus {
-  PENDING
-  IN_CONVERSATION
-  ACCEPTED
-  REJECTED
-  WITHDRAWN
-}
 
 enum ReportCategory {
   FRAUD
@@ -163,19 +156,19 @@ model User {
   createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime      @map("updated_at") @db.Timestamptz(3)
 
-  student                   Student?
+  student                 Student?
+  propertyOwner           PropertyOwner?
+  administrator           Administrator?
+  propertyCohabitancies   PropertyCohabitant[]
+  emailVerificationTokens EmailVerificationToken[]
+  createdChats            Chat[]
+  chatParticipations      ChatParticipant[]
+  sentMessages            Message[]
+  favorites               Favorite[]
+  passwordResetTokens     PasswordResetToken[]
+  interests               Interest[]
   profileDetails            UserProfileDetails?
-  propertyOwner             PropertyOwner?
-  administrator             Administrator?
-  propertyCohabitancies     PropertyCohabitant[]
-  emailVerificationTokens   EmailVerificationToken[]
   externalAuthCodes         ExternalAuthCode[]
-  createdChats              Chat[]
-  chatParticipations        ChatParticipant[]
-  sentMessages              Message[]
-  favorites                 Favorite[]
-  passwordResetTokens       PasswordResetToken[]
-  interests                 Interest[]
   paymentsAsPayer           PaymentTransaction[]       @relation("PaymentPayer")
   paymentsAsPayee           PaymentTransaction[]       @relation("PaymentPayee")
   rentalContractsAsOwner    RentalContract[]           @relation("RentalContractOwner")
@@ -511,19 +504,11 @@ model Favorite {
 }
 
 model Interest {
-<<<<<<< HEAD
   userId    String         @map("user_id") @db.Uuid
   listingId String         @map("listing_id") @db.Uuid
   status    InterestStatus @default(PENDING)
   createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
-=======
-  userId    String   @map("user_id") @db.Uuid
-  listingId String   @map("listing_id") @db.Uuid
-  status    InterestStatus @default(PENDING)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
->>>>>>> d7b741c (fix(interests): listar manifestações para anunciantes)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)

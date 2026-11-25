@@ -88,7 +88,7 @@ API do **Morae**, plataforma de moradia estudantil para alunos da UFAL. A propos
 
 ## Banco de dados
 
-O modelo do banco fica em `prisma/schema.prisma`, e o SQL que cria e altera as tabelas fica em `prisma/migrations/`. A configuração do Prisma CLI está em `prisma7.config.ts`. O client gerado vai para `src/shared/infra/database/generated/prisma` e não é versionado.
+O modelo do banco fica em `prisma/schema.prisma`, e o SQL que cria e altera as tabelas fica em `prisma/migrations/`. A configuração do Prisma CLI está em `prisma.config.ts`. O client gerado vai para `src/shared/infra/database/generated/prisma` e não é versionado.
 
 | Comando               | O que faz                                                        |
 | --------------------- | ---------------------------------------------------------------- |
@@ -820,3 +820,4 @@ As dependências apontam sempre para dentro: `presentation` → `application` �
 2. Autenticação: completar o login com a emissão de JWT, tabela de refresh tokens, guards e limite de tentativas.
 3. Casos de uso de perfil, que exigem login: consultar o próprio perfil, definir o perfil de convivência e atualizar os dados acadêmicos.
 4. Módulo `verification`: envio e revisão dos documentos de vínculo.
+
